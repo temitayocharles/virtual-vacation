@@ -1,0 +1,414 @@
+# =============================================================================
+# VIRTUAL VACATION - DEVELOPMENT DOCKER COMPOSE (OPTIMIZED)
+# =============================================================================
+# Comprehensive development environment with API key integration
+
+version: '3.8'
+
+# Development network with better isolation
+networks:
+  virtual-vacation-dev:
+    driver: bridge
+    name: virtual-vacation-dev-net
+
+# Persistent volumes for development
+volumes:
+  mongodb_data:
+    driver: local
+  redis_data:
+    driver: local
+  vault_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  frontend_dist:
+    driver: local
+  media_storage:
+    driver: local
+  ai_models:
+    driver: local
+  live_data_storage:
+    driver: local
+  cv_models_cache:
+    driver: local
+  cv_temp_storage:
+    driver: local
+
+services:
+  # =============================================================================
+  # FRONTEND - React with Hot Reloading and API Keys
+  # =============================================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development
+      args:
+        # API keys from .env for development
+        - VITE_GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY}
+        - VITE_OPENWEATHER_API_KEY=${WEATHER_API_KEY}
+        - VITE_UNSPLASH_ACCESS_KEY=${UNSPLASH_ACCESS_KEY:-}
+        - VITE_NEWS_API_KEY=${NEWS_API_KEY:-}
+        - VITE_MAPBOX_ACCESS_TOKEN=${MAPBOX_ACCESS_TOKEN:-}
+        - VITE_API_BASE_URL=http://localhost:8080
+        - VITE_WS_URL=ws://localhost:8080
+        - VITE_APP_ENV=development
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - CHOKIDAR_USEPOLLING=true
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/dist
+      - frontend_dist:/app/dist
+    depends_on:
+      - backend
+      - media-gateway
+    networks:
+      - virtual-vacation-dev
+    restart: unless-stopped
+    labels:
+      - "com.virtualvacation.service=frontend-dev"
+
+  # =============================================================================
+  # BACKEND API - Node.js with Environment Variables
+  # =============================================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=mongodb://mongodb:27017/virtual_vacation
+      - REDIS_URL=redis://redis:6379
+      - GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY}
+      - OPENWEATHER_API_KEY=${WEATHER_API_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_TOKEN=${VAULT_DEV_ROOT_TOKEN_ID}
+      - PORT=5000
+    depends_on:
+      - mongodb
+      - redis
+      - vault
+    networks:
+      - virtual-vacation-dev
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    restart: unless-stopped
+    labels:
+      - "com.virtualvacation.service=backend-dev"
+
+  # =============================================================================
+  # MEDIA GATEWAY - FastAPI for 360° Content
+  # =============================================================================
+  media-gateway:
+    build:
+      context: ./media-gateway
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONPATH=/app
+      - REDIS_URL=redis://redis:6379
+      - MONGODB_URL=mongodb://mongodb:27017/virtual_vacation
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_TOKEN=${VAULT_DEV_ROOT_TOKEN_ID}
+    depends_on:
+      - mongodb
+      - redis
+      - vault
+    networks:
+      - virtual-vacation-dev
+    volumes:
+      - ./media-gateway:/app
+      - media_storage:/app/storage
+    restart: unless-stopped
+    labels:
+      - "com.virtualvacation.service=media-gateway-dev"
+
+  # =============================================================================
+  # AI RECOMMENDATION ENGINE
+  # =============================================================================
+  recommendation-engine:
+    build:
+      context: ./ai-engine
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      - PYTHONPATH=/app
+      - MONGODB_URL=mongodb://mongodb:27017/virtual_vacation
+      - REDIS_URL=redis://redis:6379
+      - MODEL_PATH=/app/models
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_TOKEN=${VAULT_DEV_ROOT_TOKEN_ID}
+    depends_on:
+      - mongodb
+      - redis
+      - vault
+    networks:
+      - virtual-vacation-dev
+    volumes:
+      - ./ai-engine:/app
+      - ai_models:/app/models
+    restart: unless-stopped
+    labels:
+      - "com.virtualvacation.service=ai-engine-dev"
+
+  # =============================================================================
+  # LIVE DATA ENGINE - Real-time Data Collection
+  # =============================================================================
+  live-data-engine:
+    build:
+      context: ./services/live-data-engine
+      dockerfile: Dockerfile
+    ports:
+      - "8003:8003"
+    environment:
+      - PYTHONPATH=/app
+      - REDIS_URL=redis://redis:6379
+      - MONGODB_URL=mongodb://mongodb:27017/virtual_vacation
+      - WEATHER_API_KEY=${WEATHER_API_KEY}
+      - SOCIAL_MEDIA_API_KEYS=${SOCIAL_MEDIA_API_KEYS}
+      - WEBCAM_API_KEY=${WEBCAM_API_KEY}
+      - COMPUTER_VISION_URL=http://computer-vision:8004
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_TOKEN=${VAULT_DEV_ROOT_TOKEN_ID}
+    depends_on:
+      - mongodb
+      - redis
+      - vault
+      - computer-vision
+    networks:
+      - virtual-vacation-dev
+    volumes:
+      - ./services/live-data-engine:/app
+      - live_data_storage:/app/data
+    restart: unless-stopped
+    labels:
+      - "com.virtualvacation.service=live-data-dev"
+
+  # =============================================================================
+  # COMPUTER VISION ENGINE
+  # =============================================================================
+  computer-vision:
+    build:
+      context: ./services/computer-vision
+      dockerfile: Dockerfile
+    ports:
+      - "8004:8004"
+    environment:
+      - MONGODB_URL=mongodb://mongodb:27017/virtual_vacation
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - mongodb
+      - redis
+    volumes:
+      - ./services/computer-vision:/app
+      - cv_models_cache:/app/models
+      - cv_temp_storage:/app/temp
+    networks:
+      - virtual-vacation-dev
+    restart: unless-stopped
+    labels:
+      - "com.virtualvacation.service=computer-vision-dev"
+
+  # =============================================================================
+  # WORLD SIMULATION ENGINE
+  # =============================================================================
+  world-simulation-engine:
+    build:
+      context: ./services/world-simulation-engine
+      dockerfile: Dockerfile
+    ports:
+      - "8005:8005"
+    environment:
+      - MONGODB_URL=mongodb://mongodb:27017/virtual_vacation
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY}
+      - WEATHER_API_KEY=${WEATHER_API_KEY}
+    depends_on:
+      - mongodb
+      - redis
+    volumes:
+      - ./services/world-simulation-engine:/app
+      - /app/node_modules
+    networks:
+      - virtual-vacation-dev
+    restart: unless-stopped
+    labels:
+      - "com.virtualvacation.service=world-engine-dev"
+
+  # =============================================================================
+  # CULTURAL SOCIAL ENGINE
+  # =============================================================================
+  cultural-social-engine:
+    build:
+      context: ./services/cultural-social-engine
+      dockerfile: Dockerfile
+    ports:
+      - "8006:8006"
+    environment:
+      - MONGODB_URL=mongodb://mongodb:27017/virtual_vacation
+      - REDIS_URL=redis://redis:6379
+      - SOCIAL_MEDIA_API_KEYS=${SOCIAL_MEDIA_API_KEYS}
+    depends_on:
+      - mongodb
+      - redis
+    volumes:
+      - ./services/cultural-social-engine:/app
+      - /app/node_modules
+    networks:
+      - virtual-vacation-dev
+    restart: unless-stopped
+    labels:
+      - "com.virtualvacation.service=cultural-engine-dev"
+
+  # =============================================================================
+  # DATABASE - MongoDB with Development Configuration
+  # =============================================================================
+  mongodb:
+    image: mongo:7.0
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGODB_ROOT_PASSWORD:-vacation_pass}
+      - MONGO_INITDB_DATABASE=virtual_vacation
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - ./database/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - virtual-vacation-dev
+    restart: unless-stopped
+    labels:
+      - "com.virtualvacation.service=database-dev"
+
+  # =============================================================================
+  # CACHE - Redis with Development Configuration
+  # =============================================================================
+  redis:
+    image: redis:7.2-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - virtual-vacation-dev
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+    restart: unless-stopped
+    labels:
+      - "com.virtualvacation.service=cache-dev"
+
+  # =============================================================================
+  # VAULT - Secrets Management (Development Mode)
+  # =============================================================================
+  vault:
+    image: hashicorp/vault:latest
+    cap_add:
+      - IPC_LOCK
+    environment:
+      - VAULT_DEV_ROOT_TOKEN_ID=${VAULT_DEV_ROOT_TOKEN_ID}
+      - VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200
+    ports:
+      - "8200:8200"
+    volumes:
+      - vault_data:/vault/data
+      - ./vault/policies:/vault/policies
+    networks:
+      - virtual-vacation-dev
+    restart: unless-stopped
+    labels:
+      - "com.virtualvacation.service=vault-dev"
+
+  # =============================================================================
+  # REVERSE PROXY - NGINX
+  # =============================================================================
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+      - "8443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+      - frontend_dist:/usr/share/nginx/html
+    depends_on:
+      - frontend
+      - backend
+      - media-gateway
+      - recommendation-engine
+    networks:
+      - virtual-vacation-dev
+    restart: unless-stopped
+    labels:
+      - "com.virtualvacation.service=nginx-dev"
+
+  # =============================================================================
+  # MONITORING - Prometheus (Optional for Development)
+  # =============================================================================
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - virtual-vacation-dev
+    restart: unless-stopped
+    profiles: ["monitoring"]
+    labels:
+      - "com.virtualvacation.service=prometheus-dev"
+
+  # =============================================================================
+  # VISUALIZATION - Grafana (Optional for Development)
+  # =============================================================================
+  grafana:
+    image: grafana/grafana:10.0.0
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+    networks:
+      - virtual-vacation-dev
+    restart: unless-stopped
+    profiles: ["monitoring"]
+    labels:
+      - "com.virtualvacation.service=grafana-dev"
+
+# =============================================================================
+# DEVELOPMENT DOCKER COMPOSE FEATURES:
+# =============================================================================
+# ✅ Hot reloading enabled for all development services
+# ✅ Volume mounts for live code editing
+# ✅ API keys integrated from .env file
+# ✅ All services properly networked
+# ✅ Development-optimized resource usage
+# ✅ Optional monitoring stack with profiles
+# ✅ Comprehensive service labeling
+# ✅ Proper restart policies
+# ✅ Environment variables for all services
+# =============================================================================

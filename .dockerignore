@@ -1,0 +1,268 @@
+# =============================================================================
+# VIRTUAL VACATION - PRODUCTION GRADE .DOCKERIGNORE
+# =============================================================================
+
+# Git and Version Control
+.git
+.gitignore
+.gitattributes
+.gitmodules
+.github/
+.gitlab-ci.yml
+.gitpod.yml
+
+# Environment & Secrets (NEVER copy into containers)
+.env*
+!.env.example
+*.env
+.vault-token
+secrets/
+vault-data/
+config/secrets.*
+api-keys.*
+credentials.*
+
+# Documentation
+*.md
+!README.md
+docs/
+documentation/
+.github/
+LICENSE
+CHANGELOG*
+AUTHORS
+CONTRIBUTORS
+CONTRIBUTING*
+CODE_OF_CONDUCT*
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Dependencies (will be installed during build)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.npm/
+.yarn/
+.pnpm-store/
+
+# Build outputs and Cache (will be generated during build)
+dist/
+build/
+out/
+.output/
+.cache/
+.parcel-cache/
+.vite-cache/
+.turbo/
+.stylelintcache
+.eslintcache
+.tsbuildinfo
+*.tsbuildinfo
+
+# Testing
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+.jest/
+junit.xml
+test-results.xml
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+.temp/
+*.log
+logs/
+
+# Docker files (avoid recursive copying)
+Dockerfile*
+.dockerignore*
+docker-compose*.yml
+.docker/
+
+# CI/CD files
+.github/
+.gitlab-ci.yml
+azure-pipelines.yml
+.travis.yml
+.circleci/
+.jenkins/
+Jenkinsfile*
+
+# Kubernetes & Deployment
+k8s/
+kubernetes/
+helm/
+manifests/
+.terraform/
+*.tfstate*
+.terraform.lock.hcl
+
+# Local development
+.local/
+local.*
+dev.*
+*.local.*
+.dev/
+development/
+
+# Database files
+data/
+mongodb-data/
+postgres-data/
+redis-data/
+*.sqlite*
+*.db
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Backup files
+*.backup
+*.bak
+*.old
+*.orig
+*.save
+
+# Archives
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Thumbs.db:encryptable
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Python (if any Python services)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv/
+
+# Certificates (handled separately)
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+*.pfx
+certs/
+ssl/
+
+# Monitoring & Analytics
+.sentry/
+newrelic.js
+newrelic_agent.log
+
+# Large media files (should be served via CDN)
+*.mp4
+*.avi
+*.mov
+*.wmv
+*.flv
+*.webm
+public/videos/
+public/audio/large/
+assets/large-media/
+
+# =============================================================================
+# PROJECT SPECIFIC EXCLUDES
+# =============================================================================
+
+# Virtual Vacation specific cache
+simulation-data/
+user-generated-content/
+analytics-data/
+cache-data/
+world-simulation-cache/
+cultural-data-cache/
+weather-cache/
+maps-cache/
+
+# Development tools
+.storybook/
+storybook-static/
+.next/
+.nuxt/
+.vercel/
+.netlify/
+
+# Package manager lock files (copy selectively)
+# Note: We'll copy these explicitly in Dockerfile when needed
+# package-lock.json  # Include this for production builds
+# yarn.lock          # Include this for production builds
+# pnpm-lock.yaml     # Include this for production builds
+
+# Build artifacts that should be generated fresh
+generated/
+auto-generated/
+
+# Editor and IDE specific
+.history/
+.vscode/settings.json
+.vscode/launch.json
+
+# Miscellaneous
+*.stackdump
+.error.log
+.access.log
+
+# =============================================================================
+# IMPORTANT NOTES:
+# =============================================================================
+# 
+# 1. This .dockerignore optimizes build context size and build time
+# 2. Environment files are excluded for security - use build args instead
+# 3. node_modules is excluded - dependencies are installed during build
+# 4. Build outputs are excluded - they're generated during container build
+# 5. Documentation and development files are excluded from production images
+# 
+# Best practices applied:
+# - Minimal build context
+# - Security-first approach
+# - Layer caching optimization
+# - Multi-stage build support
+# =============================================================================

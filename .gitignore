@@ -1,0 +1,286 @@
+# =============================================================================
+# VIRTUAL VACATION - PRODUCTION GRADE .GITIGNORE
+# =============================================================================
+
+# Environment Variables & Secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*.local
+.env.example.local
+*.env
+.vault-token
+secrets/
+vault-data/
+
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json.backup
+pnpm-debug.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Build outputs
+dist/
+build/
+out/
+.output/
+.nuxt/
+.next/
+.vercel/
+.netlify/
+
+# Cache directories
+.cache/
+.parcel-cache/
+.vite-cache/
+.turbo/
+.stylelintcache
+.eslintcache
+.tsbuildinfo
+*.tsbuildinfo
+
+# IDE and Editor files
+.vscode/settings.json
+.vscode/launch.json
+.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Operating System
+*.log
+logs/
+*.pid
+*.seed
+*.pid.lock
+.grunt/
+lib-cov/
+coverage/
+.nyc_output/
+.coverage/
+*.lcov
+.sass-cache/
+
+# Docker
+.dockerignore.local
+docker-compose.override.yml
+docker-compose.*.local.yml
+.docker/
+docker-data/
+volumes/
+
+# Database
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+data/
+mongodb-data/
+postgres-data/
+redis-data/
+
+# Certificates & Keys
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+*.pfx
+certs/
+ssl/
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+.temp/
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Backup files
+*.backup
+*.bak
+*.old
+*.orig
+*.save
+*~
+
+# Archives
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+
+# Miscellaneous
+.error.log
+.access.log
+*.stackdump
+.history/
+
+# Testing
+.jest/
+coverage/
+.nyc_output/
+junit.xml
+test-results/
+playwright-report/
+test-results.xml
+
+# Monitoring & Analytics
+.sentry/
+newrelic.js
+newrelic_agent.log
+
+# CDN & Assets (if using external CDN)
+public/uploads/
+public/assets/generated/
+static/uploads/
+
+# API Keys & Configuration (extra safety)
+config/secrets.*
+config/production.*
+config/keys.*
+api-keys.*
+credentials.*
+
+# Build tools
+.webpack/
+.rollup/
+.snowpack/
+
+# Package managers
+.yarn/
+.npm/
+.pnpm-store/
+
+# GraphQL
+schema.graphql
+generated/
+
+# Prisma
+prisma/migrations/
+prisma/dev.db*
+
+# Deployment
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+
+# Kubernetes
+*.kubeconfig
+k8s-secrets/
+helm-secrets/
+
+# GitHub Actions (sensitive)
+.github/workflows/*.local.yml
+
+# Cloudflare
+.wrangler/
+
+# Local development
+.local/
+local.*
+dev.*
+*.local.*
+
+# Documentation builds
+docs/_build/
+site/
+
+# Python (if using Python microservices)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# macOS specific
+.AppleDouble
+.LSOverride
+Icon
+.DocumentRevisions-V100
+.fseventsd
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Windows specific
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux specific
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# =============================================================================
+# PROJECT SPECIFIC IGNORES
+# =============================================================================
+
+# Virtual Vacation specific
+simulation-data/
+user-generated-content/
+analytics-data/
+cache-data/
+world-simulation-cache/
+cultural-data-cache/
+weather-cache/
+maps-cache/
+
+# Media files (large assets)
+*.mp4
+*.avi
+*.mov
+*.wmv
+*.flv
+*.webm
+public/videos/
+public/audio/large/
+assets/large-media/
+
+# Generated documentation
+api-docs/
+technical-docs/generated/
+
+# Backup configurations
+*.conf.backup
+*.yaml.backup
+*.yml.backup
+*.json.backup
