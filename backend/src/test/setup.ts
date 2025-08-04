@@ -2,13 +2,13 @@ import { beforeAll, afterAll, beforeEach, afterEach } from '@jest/globals'
 
 // Mock environment variables for testing
 beforeAll(async () => {
-  process.env.NODE_ENV = 'test'
-  process.env.JWT_SECRET = 'test-jwt-secret-for-testing'
-  process.env.SESSION_SECRET = 'test-session-secret-for-testing'  
-  process.env.DATABASE_URL = 'postgresql://testuser:testpass@localhost:5432/virtual_vacation_test'
-  process.env.REDIS_URL = 'redis://localhost:6379'
-  process.env.GOOGLE_MAPS_API_KEY = 'test-google-maps-key'
-  process.env.OPENWEATHER_API_KEY = 'test-openweather-key'
+  process.env['NODE_ENV'] = 'test'
+  process.env['JWT_SECRET'] = 'test-jwt-secret-for-testing'
+  process.env['SESSION_SECRET'] = 'test-session-secret-for-testing'  
+  process.env['DATABASE_URL'] = 'postgresql://testuser:testpass@localhost:5432/virtual_vacation_test'
+  process.env['REDIS_URL'] = 'redis://localhost:6379'
+  process.env['GOOGLE_MAPS_API_KEY'] = 'test-google-maps-key'
+  process.env['OPENWEATHER_API_KEY'] = 'test-openweather-key'
 })
 
 // Clean up after all tests
