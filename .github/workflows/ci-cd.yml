@@ -43,7 +43,7 @@ jobs:
         npm ci
 
     - name: Install backend dependencies
-      if: -f backend/package.json
+      if: hashFiles('backend/package.json') != ''
       run: |
         cd backend
         npm ci
@@ -57,7 +57,7 @@ jobs:
         VITE_OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
 
     - name: Run backend tests
-      if: -f backend/package.json
+      if: hashFiles('backend/package.json') != ''
       run: |
         cd backend
         npm test
@@ -149,7 +149,7 @@ jobs:
         cache-to: type=gha,mode=max
 
     - name: Build and push backend image
-      if: -f backend/Dockerfile
+      if: hashFiles('backend/Dockerfile') != ''
       uses: docker/build-push-action@v5
       with:
         context: ./backend
