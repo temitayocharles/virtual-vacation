@@ -189,7 +189,7 @@ spec:
     spec:
       containers:
       - name: backend
-        image: your-registry/virtual-vacation-backend:latest
+        image: temitayocharles/virtual-vacation-backend:latest
         ports:
         - containerPort: 8000
         env:
@@ -263,7 +263,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: your-registry/virtual-vacation-frontend:latest
+        image: temitayocharles/virtual-vacation-frontend:latest
         ports:
         - containerPort: 3000
         env:
