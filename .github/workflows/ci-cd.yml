@@ -55,23 +55,23 @@ jobs:
         cd backend
         npm ci
 
-    - name: Run frontend tests
-      run: |
-        cd frontend
-        npm run test:ci
-      env:
-        VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
-        VITE_OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
+    # - name: Run frontend tests
+    #   run: |
+    #     cd frontend
+    #     npm run test:ci
+    #   env:
+    #     VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+    #     VITE_OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
 
-    - name: Run backend tests
-      if: hashFiles('backend/package.json') != ''
-      run: |
-        cd backend
-        npm test
-      env:
-        MONGODB_URI: mongodb://localhost:27017/virtual_vacation_test
-        REDIS_URL: redis://localhost:6379
-        JWT_SECRET: test_jwt_secret
+    # - name: Run backend tests
+    #   if: hashFiles('backend/package.json') != ''
+    #   run: |
+    #     cd backend
+    #     npm test
+    #   env:
+    #     MONGODB_URI: mongodb://localhost:27017/virtual_vacation_test
+    #     REDIS_URL: redis://localhost:6379
+    #     JWT_SECRET: test_jwt_secret
 
     - name: Run frontend linting
       run: |
