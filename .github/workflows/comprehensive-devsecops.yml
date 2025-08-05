@@ -318,7 +318,7 @@ jobs:
             type=raw,value={{date 'YYYYMMDD-HHmmss'}}
 
       - name: 🏗️ Build Container Image (No Push)
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./${{ matrix.component }}
           push: false
@@ -539,7 +539,7 @@ jobs:
             type=raw,value={{date 'YYYYMMDD-HHmmss'}}
 
       - name: 🏗️ Build and Push Multi-Platform Images
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./${{ matrix.component }}
           platforms: linux/amd64,linux/arm64
