@@ -4,7 +4,7 @@
 # Multi-stage build with optimal layer caching and minimal final image size
 
 # Stage 1: Base dependencies layer (cached when package.json unchanged)
-FROM node:18-alpine AS deps
+FROM node:24-alpine AS deps
 WORKDIR /app
 
 # Install system dependencies for native modules
@@ -18,7 +18,7 @@ RUN npm ci --only=production --frozen-lockfile --no-audit --no-fund \
     && npm cache clean --force
 
 # Stage 2: Build environment (includes dev dependencies)
-FROM node:18-alpine AS builder
+FROM node:24-alpine AS builder
 WORKDIR /app
 
 # Install build dependencies
