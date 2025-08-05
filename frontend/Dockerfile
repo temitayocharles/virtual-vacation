@@ -67,7 +67,7 @@ RUN npm run build && \
     npm cache clean --force
 
 # Stage 3: Production runtime with Nginx (minimal final image)
-FROM nginx:1.25-alpine AS runtime
+FROM nginx:1.29-alpine AS runtime
 
 # Install utilities for health checks and debugging
 RUN apk add --no-cache curl wget ca-certificates tzdata && \
