@@ -183,14 +183,6 @@ interface WeatherData {
   cloud_cover: number;
 }
 
-interface GlobalStats {
-  total_world_population: number;
-  active_flights: number;
-  ships_at_sea: number;
-  global_internet_users: number;
-  languages_spoken_today: number;
-}
-
 const UltraImmersiveWorldExplorer: React.FC = () => {
   const [worldData, setWorldData] = useState<WorldData | null>(null);
   const [selectedCity, setSelectedCity] = useState<string>('London, UK');

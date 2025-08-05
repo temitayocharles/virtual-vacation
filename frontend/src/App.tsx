@@ -17,7 +17,6 @@ const SettingsPage = React.lazy(() => import('./pages/SettingsPage'))
 // Ultra-comprehensive world exploration components
 const UltraImmersiveWorldExplorer = React.lazy(() => import('./components/UltraImmersiveWorldExplorer'))
 const ComprehensiveLocationExplorer = React.lazy(() => import('./components/ComprehensiveLocationExplorer'))
-const AdvancedVirtualTour = React.lazy(() => import('./components/AdvancedVirtualTour'))
 const CountryExplorer = React.lazy(() => import('./components/CountryExplorer'))
 
 function App() {
