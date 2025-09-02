@@ -1,3 +1,12 @@
+# AlertManager Configuration for Virtual Vacation
+# IMPORTANT: The Slack webhook URL has been invalidated by Slack for security reasons.
+# To restore Slack notifications:
+# 1. Go to https://api.slack.com/apps/A09DJCSP9CZ/install-on-team
+# 2. Reinstall the virtual-vacation app
+# 3. Generate a new Incoming Webhook URL
+# 4. Replace "REPLACE_WITH_NEW_SLACK_WEBHOOK_URL" below with the new URL
+# 5. Commit and redeploy
+
 global:
   smtp_smarthost: "localhost:587"
   smtp_from: "alertmanager@virtual-vacation.com"
@@ -19,7 +28,7 @@ route:
 receivers:
   - name: "slack-notifications"
     slack_configs:
-      - api_url: "https://hooks.slack.com/services/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"
+      - api_url: "REPLACE_WITH_NEW_SLACK_WEBHOOK_URL"
         channel: "#alerts"
         send_resolved: true
         title: "{{ .GroupLabels.alertname }}"
