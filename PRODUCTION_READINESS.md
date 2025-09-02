@@ -53,7 +53,10 @@
 - [ ] **Secret Management**: Implement proper secret rotation
 
 ### 📊 Monitoring Setup (REQUIRED)
-- [x] **Alert Channels**: Configure alert notifications (Slack, email, PagerDuty)
+- [ ] **Alert Channels**: Configure alert notifications (Slack webhook needs to be updated)
+  - **Issue**: Previous Slack webhook was invalidated for security
+  - **Solution**: Generate new webhook URL from Slack and update `monitoring/alertmanager.yml`
+  - **Steps**: See instructions in `monitoring/alertmanager.yml` comments
 - [ ] **Log Aggregation**: Set up centralized logging (ELK stack)
 - [ ] **Metrics Storage**: Configure long-term metrics retention
 - [ ] **Dashboard Access**: Set up team access to Grafana dashboards
