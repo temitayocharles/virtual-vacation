@@ -1,142 +1,398 @@
-# Virtual Vacation Application
-## Comprehensive Travel Experience Platform
+# Virtual Vacation - Production Kubernetes Deployment
 
-A production-ready Docker Compose application providing immersive virtual travel experiences with 360° content, AI-powered recommendations, and real-time destination exploration.
+## 🌍 Enterprise-Grade Virtual Travel Platform
 
-## 🌟 Key Features
+A production-ready, highly immersive virtual vacation application deployed on Kubernetes with enterprise-grade security, monitoring, and scalability features.
 
-### Immersive Travel Experience
-- **360° Virtual Tours**: High-quality 360-degree video content of popular destinations
-- **Interactive Street View**: Google Street View integration for real-time exploration
-- **Ambient Audio**: Authentic soundscapes from destinations worldwide
-- **Weather Integration**: Real-time weather data for authentic atmosphere
+## 📋 Table of Contents
 
-### AI-Powered Recommendations
-- **Machine Learning Engine**: Content-based filtering with user preference learning
-- **Personalized Suggestions**: Tailored destination recommendations
-- **Trending Destinations**: Real-time popularity tracking and trending analysis
-- **User Feedback Integration**: Continuous learning from user interactions
-
-### Real-Time Features
-- **Live Radio Streams**: Local radio stations from around the world
-- **Interactive Maps**: Google Maps integration with custom markers
-- **Weather Overlays**: Current conditions and forecasts
-- **Social Features**: Save favorites, share experiences
-
-### Production-Ready Architecture
-- **Microservices Design**: Scalable service-oriented architecture
-- **Container Orchestration**: Docker Compose with health checks
-- **Monitoring & Observability**: Prometheus metrics + Grafana dashboards
-- **Security**: HashiCorp Vault for secrets management, TLS encryption
-- **Caching**: Redis for performance optimization
+- [Architecture Overview](#architecture-overview)
+- [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
+- [Configuration](#configuration)
+- [Security Features](#security-features)
+- [Monitoring & Observability](#monitoring--observability)
+- [Scaling & Performance](#scaling--performance)
+- [Backup & Recovery](#backup--recovery)
+- [Troubleshooting](#troubleshooting)
+- [API Documentation](#api-documentation)
 
 ## 🏗️ Architecture Overview
 
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌────────────────┐
-│   React Frontend│    │  Node.js Backend │    │ FastAPI Media  │
-│   (Port 3000)   │◄──►│   (Port 5000)    │◄──►│ Gateway (8001) │
+│   React Frontend│    │  Node.js Backend │    │   PostgreSQL   │
+│   (Port 3000)   │◄──►│   (Port 5000)    │◄──►│   Database     │
+│   3 Replicas    │    │   3 Replicas     │    │                │
 └─────────────────┘    └──────────────────┘    └────────────────┘
          │                        │                        │
          ▼                        ▼                        ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    NGINX Reverse Proxy (80/443)                 │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                    NGINX Reverse Proxy                      │
+│                    (Port 80/443)                           │
+│                    2 Replicas                              │
+└─────────────────────────────────────────────────────────────┘
          │
          ▼
 ┌─────────────────┐    ┌──────────────────┐    ┌────────────────┐
-│   AI Engine     │    │    MongoDB       │    │     Redis      │
-│   (Port 8002)   │    │   (Port 27017)   │    │  (Port 6379)   │
-└─────────────────┘    └──────────────────┘    └────────────────┘
-         │                        │                        │
-         ▼                        ▼                        ▼
-┌─────────────────┐    ┌──────────────────┐    ┌────────────────┐
-│  HashiCorp      │    │   Prometheus     │    │    Grafana     │
-│  Vault (8200)   │    │   (Port 9090)    │    │  (Port 3001)   │
+│     Redis       │    │   Prometheus     │    │    Grafana     │
+│   Cache (6379)  │    │  Monitoring      │    │  Dashboards    │
+│                 │    │   (Port 9090)    │    │  (Port 3000)   │
 └─────────────────┘    └──────────────────┘    └────────────────┘
 ```
+
+## � Prerequisites
+
+### Required Tools
+- **kubectl** (v1.25+)
+- **Kubernetes cluster** (v1.25+)
+- **Helm** (v3.10+) - for additional tools
+- **Docker** (for building images)
+
+### Cluster Requirements
+- **Storage Class**: Default storage class configured
+- **Ingress Controller**: NGINX Ingress Controller installed
+- **Cert Manager**: For SSL certificates (optional)
+- **RBAC**: Enabled for security
+
+### Network Requirements
+- **Domain**: temitayocharles.online configured
+- **SSL Certificate**: Let's Encrypt or custom
+- **Load Balancer**: For external access
 
 ## 🚀 Quick Start
 
-### Prerequisites
-- Docker & Docker Compose installed
-- Google Maps API key (free tier: 28,000 requests/month)
-- OpenWeatherMap API key (free tier: 1,000 requests/day)
-
-### API Keys Setup
-Create a `.env` file in the project root:
-
+### 1. Clone and Setup
 ```bash
-# Google APIs
-GOOGLE_MAPS_API_KEY=your_google_maps_api_key_here
-
-# Weather API
-OPENWEATHER_API_KEY=your_openweather_api_key_here
-
-# Application Settings
-JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
-MONGODB_URI=mongodb://mongodb:27017/virtual_vacation
-REDIS_URL=redis://redis:6379
-
-# Production Settings
-NODE_ENV=production
-API_BASE_URL=http://localhost:5000
+git clone https://github.com/temitayocharles/virtual-vacation.git
+cd virtual-vacation
 ```
 
-### Launch Application
+### 2. Configure DNS (Cloudflare)
+Follow the DNS configuration guide in `DNS_CONFIGURATION.md` to set up:
+- temitayocharles.online (main app)
+- api.temitayocharles.online (API)
+- grafana.temitayocharles.online (monitoring)
+
+### 3. Configure Environment
 ```bash
-# Make the startup script executable
-chmod +x start.sh
+# Update domain and API keys in k8s/01-namespace-config.yaml
+vim k8s/01-namespace-config.yaml
 
-# Start the entire stack
-./start.sh
-
-# Or manually with Docker Compose
-docker-compose up -d
+# Update secrets
+vim k8s/01-namespace-config.yaml
 ```
 
-### Access Points
-- **Main Application**: http://localhost
-- **API Documentation**: http://localhost/api/docs
-- **Monitoring Dashboard**: http://localhost:3001 (admin/admin)
-- **Metrics**: http://localhost:9090
-- **Vault UI**: http://localhost:8200
-
-## API Resources Used (All Free/Legal)
-
-1. **Google Maps Platform** (Free tier: 28,000 map loads/month)
-2. **OpenWeatherMap** (Free tier: 1000 calls/day)
-3. **REST Countries API** (Completely free)
-4. **Radio Garden** (Free radio streaming)
-5. **Freesound.org** (Free ambient sounds with attribution)
-6. **OpenStreetMap** (Free map data)
-7. **Wikimedia Commons** (Free images)
-8. **BBC Sounds** (Public radio streams)
-
-## Legal Compliance
-
-- All APIs used are free tier or completely free
-- Proper attribution for all resources
-- No copyrighted content used without permission
-- Privacy-compliant data handling
-- GDPR-ready user data management
-
-## Development
-
+### 3. Deploy to Kubernetes
 ```bash
-# Install dependencies
-npm install
+# Make deployment script executable
+chmod +x deploy.sh
 
-# Start development server
-npm run dev
-
-# Run tests
-npm test
-
-# Build for production
-npm run build
+# Deploy all components
+./deploy.sh
 ```
 
-## Environment Variables
+### 4. Access Application
+```bash
+# Get external IP
+kubectl get ingress -n virtual-vacation
 
-See `.env.example` for required API keys and configuration.
+# Access URLs
+echo "Main App: https://temitayocharles.online"
+echo "API Docs: https://temitayocharles.online/api/docs"
+echo "Grafana:  https://grafana.temitayocharles.online"
+```
+
+## ⚙️ Configuration
+
+### Environment Variables
+
+#### Required API Keys
+```yaml
+# In k8s/01-namespace-config.yaml
+GOOGLE_MAPS_API_KEY: "your_google_maps_key"
+OPENWEATHER_API_KEY: "your_weather_api_key"
+```
+
+#### Optional API Keys
+```yaml
+UNSPLASH_ACCESS_KEY: "your_unsplash_key"
+FREESOUND_API_KEY: "your_freesound_key"
+SKETCHFAB_API_KEY: "your_sketchfab_key"
+```
+
+### Domain Configuration
+```yaml
+# Current production domain: temitayocharles.online
+# Update in k8s/05-nginx-ingress.yaml
+spec:
+  rules:
+  - host: temitayocharles.online  # ← Current domain
+```
+
+### SSL Configuration
+```yaml
+# For production SSL
+annotations:
+  cert-manager.io/cluster-issuer: "letsencrypt-prod"
+```
+
+## 🔒 Security Features
+
+### Network Security
+- ✅ **Network Policies**: Pod-to-pod communication control
+- ✅ **RBAC**: Role-based access control
+- ✅ **Service Accounts**: Least privilege principle
+- ✅ **Security Contexts**: Non-root containers
+
+### Application Security
+- ✅ **Helmet.js**: Security headers
+- ✅ **Rate Limiting**: DDoS protection
+- ✅ **CORS**: Cross-origin resource sharing control
+- ✅ **Input Validation**: Joi schema validation
+- ✅ **JWT Authentication**: Secure token-based auth
+
+### Infrastructure Security
+- ✅ **Pod Security Standards**: Restricted security context
+- ✅ **Read-only Filesystems**: Immutable containers
+- ✅ **Capability Dropping**: Minimal container capabilities
+- ✅ **Secret Management**: Kubernetes secrets for sensitive data
+
+## 📊 Monitoring & Observability
+
+### Prometheus Metrics
+- ✅ **Application Metrics**: Request latency, error rates
+- ✅ **System Metrics**: CPU, memory, disk usage
+- ✅ **Kubernetes Metrics**: Pod status, resource usage
+- ✅ **Custom Metrics**: Business-specific KPIs
+
+### Grafana Dashboards
+- ✅ **System Overview**: Cluster health dashboard
+- ✅ **Application Performance**: API response times
+- ✅ **Business Metrics**: User engagement, popular destinations
+- ✅ **Alert Dashboard**: Active alerts and incidents
+
+### Logging
+- ✅ **Fluent Bit**: Centralized log collection
+- ✅ **Structured Logging**: JSON format logs
+- ✅ **Log Aggregation**: Elasticsearch integration ready
+- ✅ **Log Retention**: Configurable retention policies
+
+### Health Checks
+```bash
+# Check all services
+kubectl get pods -n virtual-vacation
+
+# Check specific service
+kubectl logs -f deployment/backend -n virtual-vacation
+
+# Check ingress
+kubectl describe ingress virtual-vacation-ingress -n virtual-vacation
+```
+
+## ⚡ Scaling & Performance
+
+### Horizontal Pod Autoscaling
+```yaml
+# Backend HPA (k8s/03-backend.yaml)
+minReplicas: 2
+maxReplicas: 10
+targetCPUUtilizationPercentage: 70
+```
+
+### Resource Limits
+```yaml
+resources:
+  requests:
+    memory: "512Mi"
+    cpu: "250m"
+  limits:
+    memory: "1Gi"
+    cpu: "500m"
+```
+
+### Performance Optimizations
+- ✅ **Connection Pooling**: Database connection reuse
+- ✅ **Caching**: Redis for session and data caching
+- ✅ **Compression**: Gzip compression for responses
+- ✅ **CDN Ready**: Static asset optimization
+- ✅ **Database Indexing**: Optimized queries
+
+## 💾 Backup & Recovery
+
+### Database Backup
+```bash
+# Manual backup
+kubectl exec -n virtual-vacation postgres-0 -- pg_dump -U vacation_user virtual_vacation > backup.sql
+
+# Automated backup (configure cron job)
+kubectl create job backup-postgres --image=postgres:15-alpine -- pg_dump -h postgres-service -U vacation_user virtual_vacation
+```
+
+### Persistent Volumes
+```yaml
+# PVC Configuration
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+  storageClassName: "standard"
+```
+
+### Disaster Recovery
+- ✅ **Multi-zone Deployment**: Regional redundancy
+- ✅ **Backup Strategy**: Daily automated backups
+- ✅ **Recovery Testing**: Regular DR drills
+- ✅ **Data Encryption**: At-rest and in-transit
+
+## 🔧 Troubleshooting
+
+### Common Issues
+
+#### Pods Not Starting
+```bash
+# Check pod status
+kubectl get pods -n virtual-vacation
+
+# Check pod logs
+kubectl logs -f pod/pod-name -n virtual-vacation
+
+# Check events
+kubectl get events -n virtual-vacation --sort-by=.metadata.creationTimestamp
+```
+
+#### Service Unavailable
+```bash
+# Check service endpoints
+kubectl get endpoints -n virtual-vacation
+
+# Test service connectivity
+kubectl run test --image=busybox --rm -it --restart=Never -- sh
+```
+
+#### Database Connection Issues
+```bash
+# Check database pod
+kubectl exec -it postgres-0 -n virtual-vacation -- psql -U vacation_user -d virtual_vacation
+
+# Test connection from backend
+kubectl exec -it deployment/backend -n virtual-vacation -- nc -zv postgres-service 5432
+```
+
+### Performance Issues
+```bash
+# Check resource usage
+kubectl top pods -n virtual-vacation
+
+# Check HPA status
+kubectl get hpa -n virtual-vacation
+
+# Check Prometheus metrics
+kubectl port-forward svc/prometheus-service 9090:9090 -n virtual-vacation
+```
+
+## 📚 API Documentation
+
+### REST API Endpoints
+
+#### Countries
+```
+GET    /api/countries          # List all countries
+GET    /api/countries/:code    # Get country details
+POST   /api/countries          # Create country (admin)
+PUT    /api/countries/:code    # Update country (admin)
+DELETE /api/countries/:code    # Delete country (admin)
+```
+
+#### Cities
+```
+GET    /api/cities             # List cities with filters
+GET    /api/cities/:id         # Get city details
+POST   /api/cities             # Create city (admin)
+PUT    /api/cities/:id         # Update city (admin)
+DELETE /api/cities/:id         # Delete city (admin)
+```
+
+#### Weather
+```
+GET    /api/weather/:cityId    # Get current weather
+GET    /api/weather/forecast/:cityId  # Get weather forecast
+```
+
+#### User Features
+```
+POST   /api/auth/login         # User login
+POST   /api/auth/register      # User registration
+GET    /api/favorites          # Get user favorites
+POST   /api/favorites          # Add to favorites
+DELETE /api/favorites/:id      # Remove from favorites
+```
+
+### WebSocket Events
+```javascript
+// Real-time location updates
+socket.on('user-position-update', (data) => {
+  console.log('User moved:', data);
+});
+
+// Join location room
+socket.emit('join-location', locationId);
+
+// Update position
+socket.emit('update-position', { locationId, lat, lng });
+```
+
+## 🎯 Production Checklist
+
+### Pre-Deployment
+- [ ] Domain configured and DNS propagated
+- [ ] SSL certificates obtained
+- [ ] API keys configured
+- [ ] Storage class available
+- [ ] Ingress controller installed
+
+### Post-Deployment
+- [ ] Application accessible via domain
+- [ ] SSL certificate working
+- [ ] Monitoring dashboards accessible
+- [ ] Backup jobs configured
+- [ ] Alert notifications tested
+
+### Security Audit
+- [ ] Network policies applied
+- [ ] RBAC permissions verified
+- [ ] Secrets properly configured
+- [ ] Security headers enabled
+- [ ] Rate limiting active
+
+### Performance Testing
+- [ ] Load testing completed
+- [ ] Auto-scaling verified
+- [ ] Database performance optimized
+- [ ] CDN configured (if applicable)
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make changes with tests
+4. Submit a pull request
+5. Wait for review and merge
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🆘 Support
+
+For support and questions:
+- 📧 Email: support@virtualvacation.com
+- 📚 Docs: https://docs.virtualvacation.com
+- 🐛 Issues: GitHub Issues
+- 💬 Slack: #virtual-vacation
+
+---
+
+**Happy Virtual Traveling!** ✈️🌍

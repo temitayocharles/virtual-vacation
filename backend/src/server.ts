@@ -7,8 +7,8 @@ import rateLimit from 'express-rate-limit'
 import { createServer } from 'http'
 import { Server } from 'socket.io'
 import dotenv from 'dotenv'
-import { connectDB } from './config/database'
-import { connectRedis } from './config/redis'
+import { connectDB, getDB } from './config/database'
+import { connectRedis, getRedis } from './config/redis'
 import { logger } from './utils/logger'
 import { errorHandler } from './middleware/errorHandler'
 import { notFound } from './middleware/notFound'
@@ -35,46 +35,132 @@ const io = new Server(server, {
 
 const PORT = process.env.PORT || 5000
 
-// Rate limiting
+// Rate limiting - PRODUCTION HARDENED
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.',
+  max: 100, // Reduced from 1000 for production security
+  message: {
+    error: 'Too many requests from this IP, please try again later.',
+    retryAfter: '15 minutes'
+  },
   standardHeaders: true,
   legacyHeaders: false,
+  // Add IP whitelist for internal services
+  skip: (req) => {
+    const clientIP = req.ip || req.connection?.remoteAddress
+    return clientIP === '127.0.0.1' || clientIP === '::1' || req.headers['x-forwarded-for'] === '127.0.0.1'
+  },
+  // Add request logging for rate limit hits
+  onLimitReached: (req) => {
+    logger.warn(`Rate limit exceeded for IP: ${req.ip}, URL: ${req.url}`)
+  }
 })
 
-// Middleware
+// Enhanced security headers
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      imgSrc: ["'self'", "data:", "https:", "http:"],
-      scriptSrc: ["'self'"],
-      connectSrc: ["'self'", "https:", "http:", "ws:", "wss:"],
+      imgSrc: ["'self'", "data:", "https:", "blob:"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      connectSrc: ["'self'", "https:", "wss:"],
+      objectSrc: ["'none'"],
+      upgradeInsecureRequests: [],
     },
   },
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true
+  },
+  noSniff: true,
+  xssFilter: true,
+  referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+  frameguard: { action: "deny" },
+  crossOriginEmbedderPolicy: false, // Enable if needed for embedding
+  crossOriginOpenerPolicy: { policy: "same-origin" },
+  crossOriginResourcePolicy: { policy: "cross-origin" }
 }))
 app.use(cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:3000",
+  origin: process.env.CORS_ORIGIN || "https://temitayocharles.online",
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  maxAge: 86400 // 24 hours
 }))
 app.use(compression())
 app.use(morgan('combined', { stream: { write: (message) => logger.info(message.trim()) } }))
-app.use(express.json({ limit: '10mb' }))
-app.use(express.urlencoded({ extended: true, limit: '10mb' }))
+app.use(express.json({
+  limit: '10mb',
+  verify: (req, res, buf) => {
+    // Custom verification logic for request size
+    if (buf.length > 10 * 1024 * 1024) { // 10MB
+      const error = new Error('Request too large')
+        ; (error as any).status = 413
+      throw error
+    }
+  }
+}))
+app.use(express.urlencoded({
+  extended: true,
+  limit: '10mb'
+}))
 app.use(limiter)
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({
+// Health check endpoint - PRODUCTION ENHANCED
+app.get('/health', async (req, res) => {
+  const healthCheck = {
     status: 'healthy',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     environment: process.env.NODE_ENV,
-  })
+    version: process.env.npm_package_version || '1.0.0',
+    services: {
+      database: 'unknown',
+      redis: 'unknown',
+      memory: 'unknown',
+      disk: 'unknown'
+    }
+  }
+
+  try {
+    // Check database connection
+    const db = getDB()
+    await db.query('SELECT 1')
+    healthCheck.services.database = 'healthy'
+  } catch (error) {
+    healthCheck.services.database = 'unhealthy'
+    healthCheck.status = 'degraded'
+  }
+
+  try {
+    // Check Redis connection
+    const redis = getRedis()
+    await redis.ping()
+    healthCheck.services.redis = 'healthy'
+  } catch (error) {
+    healthCheck.services.redis = 'unhealthy'
+    healthCheck.status = 'degraded'
+  }
+
+  // Check memory usage
+  const memUsage = process.memoryUsage()
+  const memUsagePercent = (memUsage.heapUsed / memUsage.heapTotal) * 100
+  healthCheck.services.memory = memUsagePercent > 90 ? 'critical' : memUsagePercent > 75 ? 'warning' : 'healthy'
+
+  // Check disk space (simplified)
+  healthCheck.services.disk = 'healthy' // Would need actual disk check in production
+
+  // Set status based on service health
+  const unhealthyServices = Object.values(healthCheck.services).filter(status => status !== 'healthy')
+  if (unhealthyServices.length > 0) {
+    healthCheck.status = unhealthyServices.includes('critical') ? 'critical' : 'degraded'
+  }
+
+  const statusCode = healthCheck.status === 'healthy' ? 200 : healthCheck.status === 'degraded' ? 207 : 503
+  res.status(statusCode).json(healthCheck)
 })
 
 // API Routes

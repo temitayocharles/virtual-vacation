@@ -1,0 +1,447 @@
+# ============================================================================
+# PRODUCTION KUBERNETES MANIFESTS - VIRTUAL VACATION
+# ============================================================================
+# Enterprise-grade deployment with security, monitoring, and scalability
+# ============================================================================
+
+---
+# NAMESPACE
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: virtual-vacation
+  labels:
+    name: virtual-vacation
+    environment: production
+    managed-by: kubernetes
+
+---
+# SERVICE ACCOUNT FOR SECURE ACCESS
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: virtual-vacation-sa
+  namespace: virtual-vacation
+  labels:
+    app: virtual-vacation
+
+---
+# CLUSTER ROLE FOR MONITORING AND LOGGING
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: virtual-vacation-monitoring
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "services", "endpoints", "nodes", "namespaces"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets", "statefulsets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["get", "list", "watch"]
+
+---
+# CLUSTER ROLE BINDING
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: virtual-vacation-monitoring-binding
+roleRef:
+  apiVersion: rbac.authorization.k8s.io/v1
+  kind: ClusterRole
+  name: virtual-vacation-monitoring
+subjects:
+  - kind: ServiceAccount
+    name: virtual-vacation-sa
+    namespace: virtual-vacation
+
+---
+# CONFIGMAP - APPLICATION CONFIGURATION
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: virtual-vacation-config
+  namespace: virtual-vacation
+  labels:
+    app: virtual-vacation
+data:
+  # Application Settings
+  NODE_ENV: "production"
+  VITE_APP_ENV: "production"
+  REACT_APP_ENVIRONMENT: "production"
+
+  # Server Configuration
+  PORT: "5000"
+  FRONTEND_PORT: "3000"
+
+  # Database Configuration - PRODUCTION STRENGTHENED
+  POSTGRES_DB: "virtual_vacation"
+  POSTGRES_USER: "vacation_user"
+  DATABASE_URL: "postgresql://vacation_user@postgres-service:5432/virtual_vacation"
+
+  # Redis Configuration
+  REDIS_URL: "redis://redis-service:6379"
+  REDIS_DB: "0"
+
+  # Rate Limiting - PRODUCTION HARDENED
+  RATE_LIMIT_WINDOW_MS: "900000"
+  RATE_LIMIT_MAX_REQUESTS: "100"
+
+  # Session Configuration
+  SESSION_COOKIE_SECURE: "true"
+  SESSION_COOKIE_HTTPONLY: "true"
+  SESSION_COOKIE_SAMESITE: "strict"
+
+  # CORS Configuration - PRODUCTION READY
+  CORS_ORIGIN: "https://temitayocharles.online"
+
+  # Logging - PRODUCTION ENHANCED
+  LOG_LEVEL: "info"
+  LOG_FORMAT: "json"
+
+  # Performance
+  COMPRESSION_LEVEL: "6"
+  CACHE_TTL: "3600"
+
+  # Production Features
+  ENABLE_METRICS: "true"
+  ENABLE_TRACING: "true"
+  HEALTH_CHECK_INTERVAL: "30"
+  GRACEFUL_SHUTDOWN_TIMEOUT: "30"
+
+---
+# SECRET - SENSITIVE CONFIGURATION - PRODUCTION STRENGTHENED
+apiVersion: v1
+kind: Secret
+metadata:
+  name: virtual-vacation-secrets
+  namespace: virtual-vacation
+  labels:
+    app: virtual-vacation
+type: Opaque
+stringData:
+  # Database - PRODUCTION STRENGTHENED
+  POSTGRES_PASSWORD: "vzWcioNW7UMxjxUDLA6bmtOvxXoOAdlm"
+
+  # JWT & Sessions - PRODUCTION STRENGTHENED
+  JWT_SECRET: "7a43a0817c964b8a5b0df50034d0254501d43ea82b99f120ddfb57f93ed340a9"
+  SESSION_SECRET: "dc4be4e3c97035cdeb17e81940cff65aa0513f38f6d8ccdb578033354b793318"
+
+  # API Keys - ROTATE THESE FOR PRODUCTION
+  GOOGLE_MAPS_API_KEY: "ROTATE_THIS_API_KEY_FOR_PRODUCTION_USE"
+  OPENWEATHER_API_KEY: "ROTATE_THIS_API_KEY_FOR_PRODUCTION_USE"
+  UNSPLASH_ACCESS_KEY: "ROTATE_THIS_API_KEY_FOR_PRODUCTION_USE"
+  FREESOUND_API_KEY: "ROTATE_THIS_API_KEY_FOR_PRODUCTION_USE"
+  SKETCHFAB_API_KEY: "ROTATE_THIS_API_KEY_FOR_PRODUCTION_USE"
+
+  # Optional APIs (leave empty if not used)
+  NEWS_API_KEY: ""
+  MAPBOX_ACCESS_TOKEN: ""
+  GA_TRACKING_ID: ""
+  SENTRY_DSN: ""
+
+  # Production Secrets
+  ENCRYPTION_KEY: "ca0e16ac9922ff4d0f96fb50f8e05fb0"
+  API_ENCRYPTION_KEY: "aeadd7836a16f51c0552512a24aeea2a"
+
+---
+# RESOURCE QUOTA - PRODUCTION COMPLIANCE
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: virtual-vacation-resource-quota
+  namespace: virtual-vacation
+spec:
+  hard:
+    requests.cpu: "4"
+    requests.memory: "8Gi"
+    limits.cpu: "8"
+    limits.memory: "16Gi"
+    persistentvolumeclaims: "10"
+    pods: "50"
+    services: "20"
+    secrets: "20"
+    configmaps: "20"
+
+---
+# LIMIT RANGE - PRODUCTION COMPLIANCE
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: virtual-vacation-limit-range
+  namespace: virtual-vacation
+spec:
+  limits:
+    - default:
+        cpu: "500m"
+        memory: "512Mi"
+      defaultRequest:
+        cpu: "100m"
+        memory: "128Mi"
+      type: Container
+
+---
+# POD SECURITY STANDARD - PRODUCTION COMPLIANCE
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: virtual-vacation-psp
+  namespace: virtual-vacation
+spec:
+  privileged: false
+  allowPrivilegeEscalation: false
+  requiredDropCapabilities:
+    - ALL
+  volumes:
+    - "configMap"
+    - "emptyDir"
+    - "projected"
+    - "secret"
+    - "downwardAPI"
+    - "persistentVolumeClaim"
+  runAsUser:
+    rule: "MustRunAsNonRoot"
+  seLinux:
+    rule: "RunAsAny"
+  supplementalGroups:
+    rule: "MustRunAs"
+    ranges:
+      - min: 1
+        max: 65535
+  fsGroup:
+    rule: "MustRunAs"
+    ranges:
+      - min: 1
+        max: 65535
+  readOnlyRootFilesystem: true
+
+---
+# NETWORK POLICY - PRODUCTION HARDENED
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: virtual-vacation-network-policy
+  namespace: virtual-vacation
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow traffic from ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 80
+        - protocol: TCP
+          port: 443
+    # Allow internal pod-to-pod communication
+    - from:
+        - podSelector: {}
+      ports:
+        - protocol: TCP
+          port: 5000 # Backend
+        - protocol: TCP
+          port: 3000 # Frontend
+        - protocol: TCP
+          port: 5432 # PostgreSQL
+        - protocol: TCP
+          port: 6379 # Redis
+        - protocol: TCP
+          port: 27017 # MongoDB
+        - protocol: TCP
+          port: 9090 # Prometheus
+        - protocol: TCP
+          port: 3000 # Grafana
+  egress:
+    # Allow DNS resolution
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 53
+        - protocol: UDP
+          port: 53
+    # Allow HTTPS traffic to external APIs
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 443
+    # Allow internal cluster communication
+    - to:
+        - podSelector: {}
+    # Allow traffic to kube-system for DNS and API server
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: kube-system
+
+---
+# CERTIFICATE ISSUER - PRODUCTION SSL
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+  namespace: virtual-vacation
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: admin@temitayocharles.online
+    privateKeySecretRef:
+      name: letsencrypt-prod
+    solvers:
+      - http01:
+          ingress:
+            class: nginx
+
+---
+# CERTIFICATE - PRODUCTION SSL
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: virtual-vacation-tls
+  namespace: virtual-vacation
+spec:
+  secretName: virtual-vacation-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - temitayocharles.online
+    - www.temitayocharles.online
+    - api.temitayocharles.online
+
+---
+# BACKUP CONFIGURATION - PRODUCTION COMPLIANCE
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: virtual-vacation
+  labels:
+    app: virtual-vacation
+    component: database
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+  storageClassName: "standard" # Use appropriate storage class for your cluster
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-pvc
+  namespace: virtual-vacation
+  labels:
+    app: virtual-vacation
+    component: cache
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: "standard"
+
+---
+# BACKUP CONFIGURATION - PRODUCTION COMPLIANCE
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backup-config
+  namespace: virtual-vacation
+data:
+  backup.sh: |
+    #!/bin/bash
+    # Production Database Backup Script
+    set -e
+
+    BACKUP_DIR="/backups"
+    TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+    RETENTION_DAYS=30
+
+    # PostgreSQL Backup
+    echo "Starting PostgreSQL backup..."
+    pg_dump -h postgres-service -U vacation_user -d virtual_vacation > ${BACKUP_DIR}/postgres_backup_${TIMESTAMP}.sql
+
+    # Redis Backup
+    echo "Starting Redis backup..."
+    redis-cli -h redis-service save
+    cp /data/dump.rdb ${BACKUP_DIR}/redis_backup_${TIMESTAMP}.rdb
+
+    # Compress backups
+    echo "Compressing backups..."
+    tar -czf ${BACKUP_DIR}/full_backup_${TIMESTAMP}.tar.gz ${BACKUP_DIR}/postgres_backup_${TIMESTAMP}.sql ${BACKUP_DIR}/redis_backup_${TIMESTAMP}.rdb
+
+    # Cleanup old backups
+    echo "Cleaning up old backups..."
+    find ${BACKUP_DIR} -name "*.sql" -mtime +${RETENTION_DAYS} -delete
+    find ${BACKUP_DIR} -name "*.rdb" -mtime +${RETENTION_DAYS} -delete
+    find ${BACKUP_DIR} -name "*.tar.gz" -mtime +${RETENTION_DAYS} -delete
+
+    echo "Backup completed successfully"
+
+---
+# BACKUP CRONJOB - PRODUCTION COMPLIANCE
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: database-backup
+  namespace: virtual-vacation
+spec:
+  schedule: "0 2 * * *" # Daily at 2 AM
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: backup
+              image: postgres:15-alpine
+              command:
+                - /bin/sh
+                - -c
+                - /backup/backup.sh
+              volumeMounts:
+                - name: backup-script
+                  mountPath: /backup
+                - name: backup-storage
+                  mountPath: /backups
+              env:
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: virtual-vacation-secrets
+                      key: POSTGRES_PASSWORD
+          volumes:
+            - name: backup-script
+              configMap:
+                name: backup-config
+            - name: backup-storage
+              persistentVolumeClaim:
+                claimName: backup-pvc
+          restartPolicy: OnFailure
+
+---
+# BACKUP PVC - PRODUCTION COMPLIANCE
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: backup-pvc
+  namespace: virtual-vacation
+  labels:
+    app: virtual-vacation
+    component: backup
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Gi
+  storageClassName: "standard"
