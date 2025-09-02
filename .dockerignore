@@ -221,6 +221,8 @@ world-simulation-cache/
 cultural-data-cache/
 weather-cache/
 maps-cache/
+performance-results/
+test/
 
 # Development tools
 .storybook/

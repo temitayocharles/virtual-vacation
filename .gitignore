@@ -263,6 +263,8 @@ world-simulation-cache/
 cultural-data-cache/
 weather-cache/
 maps-cache/
+performance-results/
+.pytest_cache/
 
 # Media files (large assets)
 *.mp4

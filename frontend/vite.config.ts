@@ -56,7 +56,14 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    sourcemap: process.env.NODE_ENV === 'development', // Only generate sourcemaps in development
+    minify: 'terser', // Use terser for better minification
+    terserOptions: {
+      compress: {
+        drop_console: process.env.NODE_ENV === 'production', // Remove console logs in production
+        drop_debugger: true,
+      },
+    },
     rollupOptions: {
       output: {
         manualChunks: {
@@ -65,10 +72,22 @@ export default defineConfig({
           three: ['three', '@react-three/fiber', '@react-three/drei'],
           ui: ['framer-motion', 'lucide-react'],
         },
+        // Add content hash for cache busting
+        entryFileNames: 'assets/[name].[hash].js',
+        chunkFileNames: 'assets/[name].[hash].js',
+        assetFileNames: 'assets/[name].[hash].[ext]',
       },
     },
+    // Optimize chunk size
+    chunkSizeWarningLimit: 1000,
   },
+  // Production optimizations
   optimizeDeps: {
     include: ['react', 'react-dom', 'axios', 'leaflet'],
+    exclude: ['@vite/client', '@vite/env'], // Exclude Vite dev dependencies
+  },
+  // Security headers for production
+  define: {
+    __APP_VERSION__: JSON.stringify(process.env.npm_package_version || '1.0.0'),
   },
 })

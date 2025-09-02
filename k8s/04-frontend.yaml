@@ -1,0 +1,240 @@
+# ============================================================================
+# FRONTEND SERVICE - React Application
+# ============================================================================
+
+---
+# FRONTEND DEPLOYMENT
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: virtual-vacation
+  labels:
+    app: virtual-vacation
+    component: frontend
+    service: web
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+        component: frontend
+        service: web
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "3000"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: virtual-vacation-sa
+      securityContext:
+        runAsUser: 101
+        runAsGroup: 101
+        fsGroup: 101
+      containers:
+        - name: frontend
+          image: virtual-vacation-frontend:latest
+          imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - containerPort: 3000
+              name: http
+              protocol: TCP
+          env:
+            - name: VITE_APP_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: virtual-vacation-config
+                  key: VITE_APP_ENV
+            - name: VITE_API_BASE_URL
+              value: "http://backend-service"
+            - name: VITE_WS_URL
+              value: "ws://backend-service:8080"
+            - name: VITE_GOOGLE_MAPS_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: virtual-vacation-secrets
+                  key: GOOGLE_MAPS_API_KEY
+            - name: VITE_OPENWEATHER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: virtual-vacation-secrets
+                  key: OPENWEATHER_API_KEY
+            - name: VITE_UNSPLASH_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: virtual-vacation-secrets
+                  key: UNSPLASH_ACCESS_KEY
+            - name: VITE_FREESOUND_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: virtual-vacation-secrets
+                  key: FREESOUND_API_KEY
+            - name: VITE_SKETCHFAB_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: virtual-vacation-secrets
+                  key: SKETCHFAB_API_KEY
+          volumeMounts:
+            - name: tmp-volume
+              mountPath: /tmp
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "250m"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+              scheme: HTTP
+              httpHeaders:
+                - name: User-Agent
+                  value: "Kubernetes Liveness Probe"
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            successThreshold: 1
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+              scheme: HTTP
+              httpHeaders:
+                - name: User-Agent
+                  value: "Kubernetes Readiness Probe"
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+            successThreshold: 1
+          startupProbe:
+            httpGet:
+              path: /
+              port: 3000
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 30
+            successThreshold: 1
+      volumes:
+        - name: tmp-volume
+          emptyDir: {}
+      initContainers:
+        - name: wait-for-backend
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              until wget --no-check-certificate -qO- http://backend-service/health > /dev/null 2>&1; do
+                echo "Waiting for backend..."
+                sleep 2
+              done
+              echo "Backend is ready!"
+
+---
+# FRONTEND SERVICE
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+  namespace: virtual-vacation
+  labels:
+    app: virtual-vacation
+    component: frontend
+    service: web
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+spec:
+  selector:
+    app: frontend
+  ports:
+    - name: http
+      port: 80
+      targetPort: 3000
+      protocol: TCP
+  type: ClusterIP
+  sessionAffinity: None
+
+---
+# FRONTEND HPA
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: frontend-hpa
+  namespace: virtual-vacation
+  labels:
+    app: virtual-vacation
+    component: frontend
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: frontend
+  minReplicas: 2
+  maxReplicas: 8
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 50
+          periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 60
+        - type: Pods
+          value: 2
+          periodSeconds: 60
+
+---
+# FRONTEND PDB
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: frontend-pdb
+  namespace: virtual-vacation
+  labels:
+    app: virtual-vacation
+    component: frontend
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: frontend

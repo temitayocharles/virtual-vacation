@@ -4,27 +4,64 @@ import { logger } from '../utils/logger'
 let pool: Pool
 
 export const connectDB = async (): Promise<void> => {
-  try {
-    pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: process.env.NODE_ENV === 'production' ? {
-        rejectUnauthorized: false
-      } : false,
-      max: 20,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 2000,
-    })
+  const maxRetries = 5
+  let retryCount = 0
 
-    // Test the connection
-    const client = await pool.connect()
-    logger.info('✅ Database connected successfully')
-    client.release()
+  while (retryCount < maxRetries) {
+    try {
+      pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: process.env.NODE_ENV === 'production' ? {
+          rejectUnauthorized: false
+        } : false,
+        max: 20, // Maximum connections
+        min: 5,  // Minimum connections to maintain
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 2000,
+        allowExitOnIdle: true,
+        // Add connection validation
+        keepAlive: true,
+        keepAliveInitialDelayMillis: 0
+      })
 
-    // Create tables if they don't exist
-    await createTables()
-  } catch (error) {
-    logger.error('❌ Database connection failed:', error)
-    throw error
+      // Test the connection with timeout
+      const client = await pool.connect()
+      logger.info('✅ Database connected successfully')
+
+      // Test with a simple query
+      await client.query('SELECT 1')
+      client.release()
+
+      // Create tables if they don't exist
+      await createTables()
+
+      // Setup connection event handlers
+      pool.on('connect', (client) => {
+        logger.debug('New database client connected')
+      })
+
+      pool.on('error', (err, client) => {
+        logger.error('Unexpected database error on idle client:', err)
+      })
+
+      pool.on('remove', (client) => {
+        logger.debug('Database client removed from pool')
+      })
+
+      return
+    } catch (error) {
+      retryCount++
+      logger.error(`Database connection attempt ${retryCount} failed:`, error)
+
+      if (retryCount < maxRetries) {
+        const delay = Math.min(1000 * Math.pow(2, retryCount), 30000) // Exponential backoff
+        logger.info(`Retrying database connection in ${delay}ms...`)
+        await new Promise(resolve => setTimeout(resolve, delay))
+      } else {
+        logger.error(`Failed to connect to database after ${maxRetries} attempts`)
+        throw new Error(`Database connection failed after ${maxRetries} retries: ${error}`)
+      }
+    }
   }
 }
 

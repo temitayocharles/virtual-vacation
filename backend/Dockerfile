@@ -11,6 +11,9 @@ RUN npm ci --only=production
 # Copy source code
 COPY . .
 
+# Copy healthcheck script
+COPY healthcheck.js ./
+
 # Build the application
 RUN npm run build
 

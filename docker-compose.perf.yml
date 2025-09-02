@@ -1,0 +1,186 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database for performance testing
+  postgres:
+    image: postgres:15-alpine
+    container_name: virtual-vacation-postgres-perf
+    environment:
+      POSTGRES_DB: virtual_vacation_perf
+      POSTGRES_USER: perf_user
+      POSTGRES_PASSWORD: perf_password
+    ports:
+      - "5434:5432"  # Different port to avoid conflicts
+    volumes:
+      - postgres_perf_data:/var/lib/postgresql/data
+      - ./backend/src/config/init-perf-db.sql:/docker-entrypoint-initdb.d/init-perf-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U perf_user -d virtual_vacation_perf"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: postgres -c shared_buffers=256MB -c effective_cache_size=1GB -c maintenance_work_mem=64MB -c checkpoint_completion_target=0.9 -c wal_buffers=16MB -c default_statistics_target=100
+    networks:
+      - perf-network
+
+  # Redis Cache for performance testing
+  redis:
+    image: redis:7-alpine
+    container_name: virtual-vacation-redis-perf
+    ports:
+      - "6381:6379"  # Different port to avoid conflicts
+    volumes:
+      - redis_perf_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - perf-network
+
+  # Backend API for performance testing
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: virtual-vacation-backend-perf
+    environment:
+      NODE_ENV: production
+      PORT: 5002
+      DATABASE_URL: postgresql://perf_user:perf_password@postgres:5432/virtual_vacation_perf
+      TEST_DB_HOST: postgres
+      TEST_DB_PORT: 5432
+      TEST_DB_NAME: virtual_vacation_perf
+      TEST_DB_USER: perf_user
+      TEST_DB_PASSWORD: perf_password
+      REDIS_URL: redis://redis:6379
+      TEST_REDIS_URL: redis://redis:6379
+      JWT_SECRET: perf-jwt-secret-for-performance-tests
+      SESSION_SECRET: perf-session-secret-for-performance-tests
+      OPENWEATHER_API_KEY: perf_openweather_key
+      GOOGLE_MAPS_API_KEY: perf_google_maps_key
+      FRONTEND_URL: http://localhost:3001
+      # Performance optimizations
+      UV_THREADPOOL_SIZE: 64
+      NODE_OPTIONS: --max-old-space-size=1024
+    ports:
+      - "5002:5002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+      - ./performance-results:/app/performance-results
+    networks:
+      - perf-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # Frontend for performance testing
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: virtual-vacation-frontend-perf
+    environment:
+      NODE_ENV: production
+      VITE_API_BASE_URL: http://backend:5002
+      VITE_APP_TITLE: "Virtual Vacation - Performance Test"
+    ports:
+      - "3001:80"
+    depends_on:
+      - backend
+    networks:
+      - perf-network
+
+  # Monitoring - Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: virtual-vacation-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_perf_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - perf-network
+
+  # Monitoring - Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: virtual-vacation-grafana
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "3002:3000"
+    volumes:
+      - grafana_perf_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      - prometheus
+    networks:
+      - perf-network
+
+  # Load testing with Artillery
+  artillery:
+    image: artilleryio/artillery:latest
+    container_name: virtual-vacation-artillery
+    volumes:
+      - ./backend/src/test:/tests
+      - ./performance-results:/results
+    working_dir: /tests
+    command: run --output /results/artillery-results.json /tests/load-test.yml
+    depends_on:
+      - backend
+    networks:
+      - perf-network
+    profiles:
+      - load-test
+
+  # Alternative load testing with k6
+  k6:
+    image: grafana/k6:latest
+    container_name: virtual-vacation-k6
+    volumes:
+      - ./backend/src/test:/tests
+      - ./performance-results:/results
+    working_dir: /tests
+    environment:
+      K6_OUT: json=/results/k6-results.json
+    command: run --out json=/results/k6-results.json /tests/load-test.k6.js
+    depends_on:
+      - backend
+    networks:
+      - perf-network
+    profiles:
+      - k6-test
+
+volumes:
+  postgres_perf_data:
+  redis_perf_data:
+  prometheus_perf_data:
+  grafana_perf_data:
+
+networks:
+  perf-network:
+    driver: bridge

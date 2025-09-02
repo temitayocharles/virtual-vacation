@@ -1,0 +1,86 @@
+config:
+  target: "http://localhost:5002"
+  phases:
+    - duration: 60
+      arrivalRate: 10
+      name: "Warm-up phase"
+    - duration: 120
+      arrivalRate: 25
+      name: "Normal load"
+    - duration: 120
+      arrivalRate: 50
+      name: "High load"
+    - duration: 60
+      arrivalRate: 100
+      name: "Stress test"
+    - duration: 60
+      arrivalRate: 10
+      name: "Recovery"
+  defaults:
+    headers:
+      User-Agent: "Virtual Vacation Load Test"
+    timeout: 10000
+
+scenarios:
+  - name: "Cities API Load Test"
+    weight: 40
+    flow:
+      - get:
+          url: "/api/cities?limit=20&page=1"
+          expect:
+            - statusCode: 200
+            - hasProperty: "data"
+            - hasProperty: "pagination"
+      - get:
+          url: "/api/cities/search?q=new+york"
+          expect:
+            - statusCode: 200
+            - hasProperty: "data"
+      - get:
+          url: "/api/cities/country/US"
+          expect:
+            - statusCode: 200
+            - hasProperty: "data"
+
+  - name: "Weather API Load Test"
+    weight: 30
+    flow:
+      - get:
+          url: "/api/weather/current?lat=40.7128&lon=-74.0060"
+          expect:
+            - statusCode: 200
+            - hasProperty: "data.temperature"
+      - get:
+          url: "/api/weather/forecast?lat=40.7128&lon=-74.0060"
+          expect:
+            - statusCode: 200
+            - hasProperty: "data"
+      - get:
+          url: "/api/weather/current?lat=40.7128&lon=-74.0060"
+          expect:
+            - statusCode: 200
+
+  - name: "Street View API Load Test"
+    weight: 20
+    flow:
+      - get:
+          url: "/api/streetview/check?lat=40.7128&lon=-74.0060"
+          expect:
+            - statusCode: 200
+            - hasProperty: "data.available"
+      - get:
+          url: "/api/streetview/image-url?lat=40.7128&lon=-74.0060&size=400x300"
+          expect:
+            - statusCode: 200
+            - hasProperty: "data.url"
+
+  - name: "Health Check Load Test"
+    weight: 10
+    flow:
+      - get:
+          url: "/api/health"
+          expect:
+            - statusCode: 200
+            - hasProperty: "status"
+            - equals:
+                - "healthy"

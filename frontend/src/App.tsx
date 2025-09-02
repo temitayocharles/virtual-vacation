@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import Navigation from './components/Navigation/Navigation'
 import LoadingSpinner from './components/UI/LoadingSpinner'
+import ErrorBoundary from './components/ErrorBoundary'
 import { useVacationStore } from './store/vacationStore'
 
 // Lazy load components for better performance
@@ -23,55 +24,59 @@ function App() {
   const { isLoading } = useVacationStore()
 
   return (
-    <div className="min-h-screen">
-      <Navigation />
-      
-      {isLoading && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="immersive-overlay"
-        >
-          <div className="glass-card p-8 text-center">
-            <LoadingSpinner size="large" />
-            <p className="mt-4 text-lg glowing-text">Loading your virtual vacation...</p>
-          </div>
-        </motion.div>
-      )}
+    <ErrorBoundary>
+      <div className="min-h-screen">
+        <Navigation />
 
-      <main className="pt-16">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.6 }}
-        >
-          <Suspense fallback={
-            <div className="flex items-center justify-center min-h-screen">
-              <div className="glass-card p-8 text-center">
-                <LoadingSpinner size="large" />
-                <p className="mt-4 text-lg glowing-text">Preparing your experience...</p>
-              </div>
+        {isLoading && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="immersive-overlay"
+          >
+            <div className="glass-card p-8 text-center">
+              <LoadingSpinner size="large" />
+              <p className="mt-4 text-lg glowing-text">Loading your virtual vacation...</p>
             </div>
-          }>
-            <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/explore" element={<ExplorePage />} />
-            <Route path="/countries" element={<CountryExplorer />} />
-            <Route path="/country/:countryCode" element={<CountryPage />} />
-            <Route path="/city/:cityId" element={<CityPage />} />
-            <Route path="/immersive/:locationId" element={<ImmersiveView />} />
-            <Route path="/favorites" element={<FavoritesPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-            
-            {/* Ultra-comprehensive world exploration routes */}
-            <Route path="/world-explorer" element={<UltraImmersiveWorldExplorer />} />
-            <Route path="/location-explorer" element={<ComprehensiveLocationExplorer />} />
-          </Routes>
-        </Suspense>
-        </motion.div>
-      </main>
-    </div>
+          </motion.div>
+        )}
+
+        <main className="pt-16">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6 }}
+          >
+            <ErrorBoundary>
+              <Suspense fallback={
+                <div className="flex items-center justify-center min-h-screen">
+                  <div className="glass-card p-8 text-center">
+                    <LoadingSpinner size="large" />
+                    <p className="mt-4 text-lg glowing-text">Preparing your experience...</p>
+                  </div>
+                </div>
+              }>
+                <Routes>
+                  <Route path="/" element={<HomePage />} />
+                  <Route path="/explore" element={<ExplorePage />} />
+                  <Route path="/countries" element={<CountryExplorer />} />
+                  <Route path="/country/:countryCode" element={<CountryPage />} />
+                  <Route path="/city/:cityId" element={<CityPage />} />
+                  <Route path="/immersive/:locationId" element={<ImmersiveView />} />
+                  <Route path="/favorites" element={<FavoritesPage />} />
+                  <Route path="/settings" element={<SettingsPage />} />
+
+                  {/* Ultra-comprehensive world exploration routes */}
+                  <Route path="/world-explorer" element={<UltraImmersiveWorldExplorer />} />
+                  <Route path="/location-explorer" element={<ComprehensiveLocationExplorer />} />
+                </Routes>
+              </Suspense>
+            </ErrorBoundary>
+          </motion.div>
+        </main>
+      </div>
+    </ErrorBoundary>
   )
 }
 

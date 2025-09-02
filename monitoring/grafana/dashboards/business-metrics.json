@@ -1,0 +1,97 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Virtual Vacation - Business Metrics",
+    "tags": ["virtual-vacation", "business", "metrics"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "API Requests by Endpoint",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total{job=\"virtual-vacation-backend\"}[5m])) by (endpoint)",
+            "legendFormat": "{{endpoint}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "User Sessions",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "increase(user_sessions_total[5m])",
+            "legendFormat": "New Sessions"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "Popular Destinations",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "topk(10, sum(rate(destination_views_total[5m])) by (destination))",
+            "legendFormat": "{{destination}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+      },
+      {
+        "id": 4,
+        "title": "Weather API Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(weather_api_requests_total[5m])",
+            "legendFormat": "Weather API Calls"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+      },
+      {
+        "id": 5,
+        "title": "User Favorites",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "increase(user_favorites_total[5m])",
+            "legendFormat": "New Favorites"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}
+      },
+      {
+        "id": 6,
+        "title": "Search Queries",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(search_queries_total[5m])",
+            "legendFormat": "Search Queries"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}
+      }
+    ],
+    "time": {
+      "from": "now-24h",
+      "to": "now"
+    },
+    "timepicker": {},
+    "templating": {
+      "list": []
+    },
+    "annotations": {
+      "list": []
+    },
+    "refresh": "5m",
+    "schemaVersion": 27,
+    "version": 0,
+    "links": []
+  }
+}

@@ -52,7 +52,8 @@ export const getRedis = (): RedisClientType => {
 export const cache = {
   get: async (key: string): Promise<string | null> => {
     try {
-      return await redisClient.get(key)
+      const client = getRedis()
+      return await client.get(key)
     } catch (error) {
       logger.error(`Error getting cache key ${key}:`, error)
       return null
@@ -61,10 +62,11 @@ export const cache = {
 
   set: async (key: string, value: string, ttl?: number): Promise<void> => {
     try {
+      const client = getRedis()
       if (ttl) {
-        await redisClient.setEx(key, ttl, value)
+        await client.setEx(key, ttl, value)
       } else {
-        await redisClient.set(key, value)
+        await client.set(key, value)
       }
     } catch (error) {
       logger.error(`Error setting cache key ${key}:`, error)
@@ -73,7 +75,8 @@ export const cache = {
 
   del: async (key: string): Promise<void> => {
     try {
-      await redisClient.del(key)
+      const client = getRedis()
+      await client.del(key)
     } catch (error) {
       logger.error(`Error deleting cache key ${key}:`, error)
     }
@@ -81,7 +84,8 @@ export const cache = {
 
   exists: async (key: string): Promise<boolean> => {
     try {
-      const result = await redisClient.exists(key)
+      const client = getRedis()
+      const result = await client.exists(key)
       return result === 1
     } catch (error) {
       logger.error(`Error checking cache key ${key}:`, error)
@@ -91,7 +95,8 @@ export const cache = {
 
   expire: async (key: string, seconds: number): Promise<void> => {
     try {
-      await redisClient.expire(key, seconds)
+      const client = getRedis()
+      await client.expire(key, seconds)
     } catch (error) {
       logger.error(`Error setting expiry for cache key ${key}:`, error)
     }
