@@ -1,21 +1,37 @@
-FROM node:18-alpine
+FROM node:18-alpine AS builder
 
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install ALL dependencies (including dev dependencies for build)
+RUN npm ci
 
 # Copy source code
 COPY . .
 
-# Copy healthcheck script
-COPY healthcheck.js ./
-
 # Build the application
 RUN npm run build
+
+# Remove node_modules to reduce size
+RUN rm -rf node_modules
+
+# Install only production dependencies
+RUN npm ci --only=production
+
+# Production stage - Final image
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Copy only the built files from builder
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package*.json ./
+
+# Copy healthcheck script
+COPY healthcheck.js ./
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs

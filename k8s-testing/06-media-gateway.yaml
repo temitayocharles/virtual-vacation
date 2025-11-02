@@ -1,0 +1,348 @@
+# ============================================================================
+# OPTIONAL: MEDIA GATEWAY - PYTHON FASTAPI SERVICE (TESTING)
+# ============================================================================
+# Streaming service for 360° content, panoramic images, and multimedia assets
+# Note: This is OPTIONAL and requires additional dependencies (MongoDB, MinIO)
+# ============================================================================
+
+---
+# MONGODB DEPLOYMENT (TESTING - 1 REPLICA)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongodb
+  namespace: virtual-vacation
+  labels:
+    app: virtual-vacation
+    component: database
+    service: mongodb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongodb
+  template:
+    metadata:
+      labels:
+        app: mongodb
+        component: database
+    spec:
+      serviceAccountName: virtual-vacation-sa
+      automountServiceAccountToken: false
+      containers:
+        - name: mongodb
+          image: mongo:7-jammy
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 27017
+              name: mongodb
+          env:
+            - name: MONGO_INITDB_DATABASE
+              value: "media_db"
+          volumeMounts:
+            - name: mongodb-data
+              mountPath: /data/db
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "250m"
+          livenessProbe:
+            exec:
+              command:
+                - mongosh
+                - --eval
+                - "db.adminCommand('ping')"
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command:
+                - mongosh
+                - --eval
+                - "db.adminCommand('ping')"
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      volumes:
+        - name: mongodb-data
+          emptyDir: {}
+
+---
+# MONGODB SERVICE
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb-service
+  namespace: virtual-vacation
+  labels:
+    app: virtual-vacation
+    component: database
+    service: mongodb
+spec:
+  selector:
+    app: mongodb
+  ports:
+    - name: mongodb
+      port: 27017
+      targetPort: 27017
+  type: ClusterIP
+
+---
+# MINIO DEPLOYMENT (TESTING - 1 REPLICA)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minio
+  namespace: virtual-vacation
+  labels:
+    app: virtual-vacation
+    component: storage
+    service: minio
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: minio
+  template:
+    metadata:
+      labels:
+        app: minio
+        component: storage
+    spec:
+      serviceAccountName: virtual-vacation-sa
+      automountServiceAccountToken: false
+      containers:
+        - name: minio
+          image: minio/minio:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9000
+              name: minio-api
+            - containerPort: 9001
+              name: minio-console
+          env:
+            - name: MINIO_ACCESS_KEY
+              value: "minioadmin"
+            - name: MINIO_SECRET_KEY
+              value: "minioadmin"
+          command:
+            - minio
+            - server
+            - /data
+            - --console-address
+            - ":9001"
+          volumeMounts:
+            - name: minio-data
+              mountPath: /data
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "250m"
+          livenessProbe:
+            httpGet:
+              path: /minio/health/live
+              port: 9000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /minio/health/ready
+              port: 9000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      volumes:
+        - name: minio-data
+          emptyDir: {}
+
+---
+# MINIO SERVICE (API)
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio-service
+  namespace: virtual-vacation
+  labels:
+    app: virtual-vacation
+    component: storage
+    service: minio
+spec:
+  selector:
+    app: minio
+  ports:
+    - name: minio-api
+      port: 9000
+      targetPort: 9000
+  type: ClusterIP
+
+---
+# MINIO SERVICE (CONSOLE)
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio-console-service
+  namespace: virtual-vacation
+  labels:
+    app: virtual-vacation
+    component: storage
+    service: minio-console
+spec:
+  selector:
+    app: minio
+  ports:
+    - name: minio-console
+      port: 9001
+      targetPort: 9001
+  type: LoadBalancer
+
+---
+# MEDIA GATEWAY DEPLOYMENT (TESTING - 1 REPLICA)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: media-gateway
+  namespace: virtual-vacation
+  labels:
+    app: virtual-vacation
+    component: media-gateway
+    service: streaming
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: media-gateway
+  template:
+    metadata:
+      labels:
+        app: media-gateway
+        component: media-gateway
+    spec:
+      serviceAccountName: virtual-vacation-sa
+      automountServiceAccountToken: false
+      containers:
+        - name: media-gateway
+          image: virtual-vacation-media-gateway:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8000
+              name: http
+          env:
+            - name: REDIS_URL
+              value: "redis://redis-service:6379"
+            - name: MONGODB_URL
+              value: "mongodb://mongodb-service:27017/media_db"
+            - name: MINIO_ENDPOINT
+              value: "minio-service:9000"
+            - name: MINIO_ACCESS_KEY
+              value: "minioadmin"
+            - name: MINIO_SECRET_KEY
+              value: "minioadmin"
+            - name: VAULT_ADDR
+              value: "http://vault:8200"
+            - name: LOG_LEVEL
+              value: "info"
+          volumeMounts:
+            - name: storage
+              mountPath: /app/storage
+            - name: tmp-volume
+              mountPath: /tmp
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "250m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+      volumes:
+        - name: storage
+          emptyDir: {}
+        - name: tmp-volume
+          emptyDir: {}
+      initContainers:
+        - name: wait-for-mongodb
+          image: mongo:7-jammy
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - |
+              until mongosh --host mongodb-service --eval "db.adminCommand('ping')" > /dev/null 2>&1; do
+                echo "Waiting for MongoDB..."
+                sleep 2
+              done
+              echo "MongoDB is ready!"
+        - name: wait-for-minio
+          image: minio/minio:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - |
+              until nc -z minio-service 9000; do
+                echo "Waiting for MinIO..."
+                sleep 2
+              done
+              echo "MinIO is ready!"
+
+---
+# MEDIA GATEWAY SERVICE
+apiVersion: v1
+kind: Service
+metadata:
+  name: media-gateway-service
+  namespace: virtual-vacation
+  labels:
+    app: virtual-vacation
+    component: media-gateway
+    service: streaming
+spec:
+  selector:
+    app: media-gateway
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+  type: ClusterIP
+
+---
+# STORAGE PVC FOR MEDIA GATEWAY
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: media-storage-pvc
+  namespace: virtual-vacation
+  labels:
+    app: virtual-vacation
+    component: media-gateway
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: "standard"

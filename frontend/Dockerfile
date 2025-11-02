@@ -27,8 +27,8 @@ RUN apk add --no-cache libc6-compat python3 make g++
 # Copy package files
 COPY package.json package-lock.json* ./
 
-# Install ALL dependencies (including dev dependencies for build)
-RUN npm ci --frozen-lockfile --no-audit --no-fund
+# Install dependencies
+RUN npm install --legacy-peer-deps --no-audit --no-fund
 
 # Copy source code (this layer invalidates when source changes)
 COPY . .

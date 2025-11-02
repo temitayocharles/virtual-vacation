@@ -1,0 +1,606 @@
+# Virtual Vacation - Kubernetes Deployment with Public Multiarch Images
+# This example shows how to use images from Docker Hub or GHCR
+# Replace YOUR_USERNAME and YOUR_ORG with actual values
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: virtual-vacation-prod
+  labels:
+    name: virtual-vacation-prod
+
+---
+# ConfigMap for Backend
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: virtual-vacation-prod
+data:
+  NODE_ENV: "production"
+  LOG_LEVEL: "info"
+  PORT: "3000"
+  CORS_ORIGIN: "https://virtual-vacation.yourdomain.com"
+  DATABASE_URL: "postgresql://postgres:postgres@postgres:5432/virtual-vacation"
+  REDIS_URL: "redis://redis:6379"
+  API_TIMEOUT: "30000"
+  RATE_LIMIT_WINDOW_MS: "900000"
+  RATE_LIMIT_MAX_REQUESTS: "100"
+
+---
+# ConfigMap for Frontend
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: frontend-config
+  namespace: virtual-vacation-prod
+data:
+  VITE_API_URL: "https://api.virtual-vacation.yourdomain.com"
+  VITE_ENABLE_ANALYTICS: "true"
+  VITE_LOG_LEVEL: "warn"
+
+---
+# ImagePullSecret for GHCR (if using private GHCR images)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ghcr-secret
+  namespace: virtual-vacation-prod
+type: kubernetes.io/dockercfg
+data:
+  .dockercfg: eyJnaHNyLmlvIjp7ImF1dGgiOiJZV0oxY0d4aE9pSkNjblY2SWdSblpTQlRUMGNnWTJWeWRHbG1hV05oZEdWVElnOD0ifX0=  # base64 encoded
+
+---
+# PostgreSQL Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: virtual-vacation-prod
+  labels:
+    app: postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_DB
+          value: "virtual-vacation"
+        - name: POSTGRES_USER
+          value: "postgres"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-secrets
+              key: postgres-password
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - pg_isready -U postgres
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - pg_isready -U postgres
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: postgres-storage
+        emptyDir: {}
+
+---
+# Redis Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: virtual-vacation-prod
+  labels:
+    app: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:7.2-alpine
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 6379
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - redis-cli ping
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - redis-cli ping
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "50m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+
+---
+# PostgreSQL Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: virtual-vacation-prod
+  labels:
+    app: postgres
+spec:
+  selector:
+    app: postgres
+  ports:
+  - port: 5432
+    targetPort: 5432
+  clusterIP: None
+
+---
+# Redis Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: virtual-vacation-prod
+  labels:
+    app: redis
+spec:
+  selector:
+    app: redis
+  ports:
+  - port: 6379
+    targetPort: 6379
+  clusterIP: None
+
+---
+# Backend Deployment - Using Multiarch Image from Docker Hub
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: virtual-vacation-prod
+  labels:
+    app: backend
+    version: v1
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+        version: v1
+    spec:
+      initContainers:
+      - name: wait-for-postgres
+        image: busybox:1.36
+        command: ['sh', '-c', 'until nc -z postgres 5432; do echo waiting for postgres; sleep 2; done']
+      - name: wait-for-redis
+        image: busybox:1.36
+        command: ['sh', '-c', 'until nc -z redis 6379; do echo waiting for redis; sleep 2; done']
+      containers:
+      - name: backend
+        # Option 1: From Docker Hub
+        image: YOUR_USERNAME/virtual-vacation-backend:latest
+        
+        # Option 2: From GitHub Container Registry (uncomment to use)
+        # image: ghcr.io/YOUR_ORG/virtual-vacation-backend:latest
+        # imagePullSecrets:
+        # - name: ghcr-secret
+        
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 3000
+          protocol: TCP
+        env:
+        - name: NODE_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: backend-config
+              key: NODE_ENV
+        - name: PORT
+          valueFrom:
+            configMapKeyRef:
+              name: backend-config
+              key: PORT
+        - name: CORS_ORIGIN
+          valueFrom:
+            configMapKeyRef:
+              name: backend-config
+              key: CORS_ORIGIN
+        - name: DATABASE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: backend-config
+              key: DATABASE_URL
+        - name: REDIS_URL
+          valueFrom:
+            configMapKeyRef:
+              name: backend-config
+              key: REDIS_URL
+        - name: GOOGLE_MAPS_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: api-keys
+              key: google-maps-api-key
+        - name: OPENWEATHER_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: api-keys
+              key: openweather-api-key
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+
+---
+# Backend Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: virtual-vacation-prod
+  labels:
+    app: backend
+spec:
+  selector:
+    app: backend
+  ports:
+  - name: http
+    port: 3000
+    targetPort: 3000
+    protocol: TCP
+  type: ClusterIP
+
+---
+# Frontend Deployment - Using Multiarch Image from Docker Hub
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: virtual-vacation-prod
+  labels:
+    app: frontend
+    version: v1
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+        version: v1
+    spec:
+      initContainers:
+      - name: wait-for-backend
+        image: busybox:1.36
+        command: ['sh', '-c', 'until nc -z backend 3000; do echo waiting for backend; sleep 2; done']
+      containers:
+      - name: frontend
+        # Option 1: From Docker Hub
+        image: YOUR_USERNAME/virtual-vacation-frontend:latest
+        
+        # Option 2: From GitHub Container Registry (uncomment to use)
+        # image: ghcr.io/YOUR_ORG/virtual-vacation-frontend:latest
+        # imagePullSecrets:
+        # - name: ghcr-secret
+        
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 80
+          protocol: TCP
+        env:
+        - name: VITE_API_URL
+          valueFrom:
+            configMapKeyRef:
+              name: frontend-config
+              key: VITE_API_URL
+        - name: VITE_ENABLE_ANALYTICS
+          valueFrom:
+            configMapKeyRef:
+              name: frontend-config
+              key: VITE_ENABLE_ANALYTICS
+        - name: VITE_GOOGLE_MAPS_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: api-keys
+              key: google-maps-api-key
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 3
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "50m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+
+---
+# Frontend Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: virtual-vacation-prod
+  labels:
+    app: frontend
+spec:
+  selector:
+    app: frontend
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80
+    protocol: TCP
+  type: ClusterIP
+
+---
+# Nginx Ingress Controller Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-ingress
+  namespace: virtual-vacation-prod
+  labels:
+    app: nginx-ingress
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx-ingress
+  template:
+    metadata:
+      labels:
+        app: nginx-ingress
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.25-alpine
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 80
+        - containerPort: 443
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+
+---
+# Nginx Ingress Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-ingress
+  namespace: virtual-vacation-prod
+  labels:
+    app: nginx-ingress
+spec:
+  selector:
+    app: nginx-ingress
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80
+  - name: https
+    port: 443
+    targetPort: 443
+  type: LoadBalancer
+
+---
+# Ingress Resource
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: virtual-vacation
+  namespace: virtual-vacation-prod
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - virtual-vacation.yourdomain.com
+    - api.virtual-vacation.yourdomain.com
+    secretName: virtual-vacation-tls
+  rules:
+  - host: virtual-vacation.yourdomain.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend
+            port:
+              number: 80
+  - host: api.virtual-vacation.yourdomain.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: backend
+            port:
+              number: 3000
+
+---
+# Secrets for API Keys
+apiVersion: v1
+kind: Secret
+metadata:
+  name: api-keys
+  namespace: virtual-vacation-prod
+  labels:
+    app: virtual-vacation
+type: Opaque
+stringData:
+  google-maps-api-key: "CONFIGURE_YOUR_API_KEY_HERE"
+  openweather-api-key: "CONFIGURE_YOUR_API_KEY_HERE"
+  unsplash-api-key: "CONFIGURE_YOUR_API_KEY_HERE"
+  freesound-api-key: "CONFIGURE_YOUR_API_KEY_HERE"
+
+---
+# Secrets for Database
+apiVersion: v1
+kind: Secret
+metadata:
+  name: db-secrets
+  namespace: virtual-vacation-prod
+type: Opaque
+stringData:
+  postgres-password: "secure-password-change-me"
+
+---
+# HorizontalPodAutoscaler for Backend
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: backend-hpa
+  namespace: virtual-vacation-prod
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: backend
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+
+---
+# HorizontalPodAutoscaler for Frontend
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: frontend-hpa
+  namespace: virtual-vacation-prod
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: frontend
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 75
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80

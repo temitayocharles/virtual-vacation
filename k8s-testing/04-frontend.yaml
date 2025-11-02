@@ -1,0 +1,135 @@
+# ============================================================================
+# FRONTEND SERVICE - React Application (TESTING - 1 REPLICA)
+# ============================================================================
+# Simplified for testing environment with local domain
+# ============================================================================
+
+---
+# FRONTEND DEPLOYMENT (TESTING - 1 REPLICA)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: virtual-vacation
+  labels:
+    app: virtual-vacation
+    component: frontend
+    service: web
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+        component: frontend
+    spec:
+      serviceAccountName: virtual-vacation-sa
+      automountServiceAccountToken: false
+      containers:
+        - name: frontend
+          image: virtual-vacation-frontend:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 80
+              name: http
+          env:
+            - name: VITE_APP_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: virtual-vacation-config
+                  key: VITE_APP_ENV
+            - name: VITE_API_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: virtual-vacation-config
+                  key: VITE_API_BASE_URL
+            - name: VITE_WS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: virtual-vacation-config
+                  key: VITE_WS_URL
+            - name: VITE_GOOGLE_MAPS_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: virtual-vacation-secrets
+                  key: GOOGLE_MAPS_API_KEY
+            - name: VITE_OPENWEATHER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: virtual-vacation-secrets
+                  key: OPENWEATHER_API_KEY
+          volumeMounts:
+            - name: tmp-volume
+              mountPath: /tmp
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "150m"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+              httpHeaders:
+                - name: User-Agent
+                  value: "Kubernetes Probe"
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+              httpHeaders:
+                - name: User-Agent
+                  value: "Kubernetes Probe"
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+      volumes:
+        - name: tmp-volume
+          emptyDir: {}
+      initContainers:
+        - name: wait-for-backend
+          image: busybox:1.36
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - |
+              until wget --no-check-certificate -qO- http://backend-service/health > /dev/null 2>&1; do
+                echo "Waiting for backend..."
+                sleep 2
+              done
+              echo "Backend is ready!"
+
+---
+# FRONTEND SERVICE
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+  namespace: virtual-vacation
+  labels:
+    app: virtual-vacation
+    component: frontend
+spec:
+  selector:
+    app: frontend
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+  type: ClusterIP
