@@ -1,6 +1,6 @@
 // Minimal test setup without problematic imports
 import dotenv from 'dotenv'
-import path from 'path'
+import path from 'node:path'
 
 // Load test environment variables
 dotenv.config({ path: path.resolve(__dirname, '../../.env.test') })

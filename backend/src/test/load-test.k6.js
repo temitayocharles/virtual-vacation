@@ -173,7 +173,7 @@ export function handleSummary(data) {
     };
 
     // Write summary to file
-    const fs = require('fs');
+    const fs = require('node:fs');
     fs.writeFileSync('./performance-results/k6-summary.json', JSON.stringify(summary, null, 2));
 
     return {
