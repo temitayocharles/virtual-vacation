@@ -31,11 +31,11 @@ jobs:
           - service: backend
             dockerfile: backend/Dockerfile
             context: backend
-            image_name: ${{ env.IMAGE_NAME_BACKEND }}
+            image_name: virtual-vacation-backend
           - service: frontend
             dockerfile: frontend/Dockerfile
             context: frontend
-            image_name: ${{ env.IMAGE_NAME_FRONTEND }}
+            image_name: virtual-vacation-frontend
 
     steps:
       - name: Checkout repository
@@ -110,5 +110,5 @@ jobs:
       - name: Verify multiarch images were pushed
         run: |
           echo "✓ Multiarch images for ${{ matrix.image }} pushed successfully to:"
-          echo "  - Docker Hub: ${{ env.REGISTRY_DOCKER }}/${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.image }}"
-          echo "  - GHCR: ${{ env.REGISTRY_GHCR }}/${{ github.repository_owner }}/${{ matrix.image }}"
+          echo "  - Docker Hub: ${{ env.REGISTRY_DOCKER }}/${{ secrets.DOCKERHUB_USERNAME }}/virtual-vacation-${{ matrix.image }}"
+          echo "  - GHCR: ${{ env.REGISTRY_GHCR }}/${{ github.repository_owner }}/virtual-vacation-${{ matrix.image }}"
