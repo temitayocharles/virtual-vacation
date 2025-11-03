@@ -1,44 +1,36 @@
-FROM node:18-alpine AS builder
+# =============================================================================
+# VIRTUAL VACATION BACKEND - FAST APPLICATION BUILD
+# =============================================================================
+# Uses pre-built base image with dependencies for faster builds
 
-WORKDIR /app
+# Use our pre-built base image with all dependencies
+ARG BASE_IMAGE_TAG=latest
+FROM temitayocharles/virtual-vacation-backend-base:${BASE_IMAGE_TAG} AS builder
 
-# Copy package files
-COPY package*.json ./
+# Copy source code (only this layer changes on code updates)
+COPY --chown=nodeuser:nodejs . .
 
-# Install ALL dependencies (including dev dependencies for build)
-RUN npm ci
-
-# Copy source code
-COPY . .
-
-# Build the application
+# Build the application (dependencies already installed in base image)
 RUN npm run build
 
-# Remove node_modules to reduce size
-RUN rm -rf node_modules
-
-# Install only production dependencies
-RUN npm ci --only=production
-
 # Production stage - Final image
-FROM node:18-alpine
+FROM node:18-alpine AS runtime
 
 WORKDIR /app
 
-# Copy only the built files from builder
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package*.json ./
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs \
+    && adduser -S nodeuser -u 1001
+
+# Copy built application and production dependencies from builder
+COPY --from=builder --chown=nodeuser:nodejs /app/dist ./dist
+COPY --from=builder --chown=nodeuser:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nodeuser:nodejs /app/package*.json ./
 
 # Copy healthcheck script
-COPY healthcheck.js ./
+COPY --chown=nodeuser:nodejs healthcheck.js ./
 
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S nodeuser -u 1001
-
-# Change ownership of the app directory
-RUN chown -R nodeuser:nodejs /app
+# Switch to non-root user
 USER nodeuser
 
 # Expose port

@@ -1,0 +1,35 @@
+# =============================================================================
+# VIRTUAL VACATION BACKEND - BASE IMAGE WITH DEPENDENCIES  
+# =============================================================================
+# This image contains all dependencies and is rebuilt only when package.json changes
+
+FROM node:18-alpine AS base
+
+WORKDIR /app
+
+# Install system dependencies (if needed)
+RUN apk add --no-cache curl wget \
+    && addgroup -g 1001 -S nodejs \
+    && adduser -S nodeuser -u 1001
+
+# Copy package files
+COPY package*.json ./
+
+# Install ALL dependencies (dev + production)
+# This layer will be cached and reused unless package.json changes
+RUN npm ci --legacy-peer-deps \
+    && npm cache clean --force
+
+# Create directories and set permissions
+RUN mkdir -p /app/dist /app/src \
+    && chown -R nodeuser:nodejs /app
+
+# Set user for security
+USER nodeuser
+
+# Label for identification
+LABEL component="backend-base" \
+      stage="dependencies" \
+      version="1.0.0"
+
+# This base image now has all dependencies installed

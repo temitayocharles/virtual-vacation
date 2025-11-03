@@ -1,4 +1,4 @@
-name: Build and Push Multiarch Images
+name: Build and Push Application Images
 
 on:
   push:
@@ -7,6 +7,11 @@ on:
       - develop
     tags:
       - 'v*'
+    paths-ignore:
+      - 'frontend/package*.json'
+      - 'backend/package*.json'
+      - 'frontend/Dockerfile.base'
+      - 'backend/Dockerfile.base'
   pull_request:
     branches:
       - main
@@ -21,6 +26,7 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     permissions:
       contents: read
       packages: write
@@ -40,6 +46,19 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Get base image tags
+        id: base-tags
+        run: |
+          # Try to get base image tags from previous builds
+          if [ -f ".github/base-images/${{ matrix.service }}-tag.txt" ]; then
+            BASE_TAG=$(cat .github/base-images/${{ matrix.service }}-tag.txt)
+            echo "base_tag=${BASE_TAG}" >> $GITHUB_OUTPUT
+            echo "✅ Using base image tag: ${BASE_TAG}"
+          else
+            echo "base_tag=latest" >> $GITHUB_OUTPUT
+            echo "⚠️ No specific base tag found, using 'latest'"
+          fi
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -76,24 +95,27 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push to Docker Hub and GHCR
+        id: build
         uses: docker/build-push-action@v5
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
-          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=registry,ref=${{ env.REGISTRY_GHCR }}/${{ github.repository_owner }}/${{ matrix.image_name }}:buildcache
-          cache-to: type=registry,ref=${{ env.REGISTRY_GHCR }}/${{ github.repository_owner }}/${{ matrix.image_name }}:buildcache,mode=max
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BASE_IMAGE_TAG=${{ steps.base-tags.outputs.base_tag }}
 
       - name: Image digest (Backend)
         if: matrix.service == 'backend'
-        run: echo "Backend image pushed with digest ${{ steps.docker_build.outputs.digest }}"
+        run: echo "Backend image pushed with digest ${{ steps.build.outputs.digest }}"
 
       - name: Image digest (Frontend)
         if: matrix.service == 'frontend'
-        run: echo "Frontend image pushed with digest ${{ steps.docker_build.outputs.digest }}"
+        run: echo "Frontend image pushed with digest ${{ steps.build.outputs.digest }}"
 
   verify-images:
     needs: build-and-push
