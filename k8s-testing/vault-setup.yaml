@@ -1,0 +1,183 @@
+---
+# Vault Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: vault
+  labels:
+    name: vault
+
+---
+# ServiceAccount for Vault
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vault
+  namespace: vault
+
+---
+# ClusterRoleBinding for Vault auth
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: vault-auth-delegator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:auth-delegator
+subjects:
+- kind: ServiceAccount
+  name: vault
+  namespace: vault
+
+---
+# PVC for Vault storage
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: vault-storage
+  namespace: vault
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+
+---
+# ConfigMap for Vault configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vault-config
+  namespace: vault
+data:
+  vault.hcl: |
+    ui = true
+    disable_mlock = true
+
+    storage "file" {
+      path = "/vault/data"
+    }
+
+    listener "tcp" {
+      address       = "0.0.0.0:8200"
+      tls_disable   = 1
+    }
+
+    api_addr = "http://vault:8200"
+    cluster_addr = "http://vault:8201"
+
+---
+# Vault Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vault
+  namespace: vault
+  labels:
+    app: vault
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vault
+  template:
+    metadata:
+      labels:
+        app: vault
+    spec:
+      serviceAccountName: vault
+      containers:
+      - name: vault
+        image: vault:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8200
+          name: http
+        - containerPort: 8201
+          name: cluster
+        env:
+        - name: VAULT_ADDR
+          value: "http://127.0.0.1:8200"
+        - name: VAULT_API_ADDR
+          value: "http://127.0.0.1:8200"
+        - name: VAULT_SKIP_VERIFY
+          value: "true"
+        volumeMounts:
+        - name: vault-storage
+          mountPath: /vault/data
+        - name: vault-config
+          mountPath: /vault/config
+        command:
+          - vault
+          - server
+          - -config=/vault/config/vault.hcl
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /v1/sys/health
+            port: 8200
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /v1/sys/health
+            port: 8200
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+      volumes:
+      - name: vault-storage
+        persistentVolumeClaim:
+          claimName: vault-storage
+      - name: vault-config
+        configMap:
+          name: vault-config
+
+---
+# Vault Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: vault
+  namespace: vault
+  labels:
+    app: vault
+spec:
+  selector:
+    app: vault
+  ports:
+  - name: http
+    port: 8200
+    targetPort: 8200
+  - name: cluster
+    port: 8201
+    targetPort: 8201
+  type: ClusterIP
+
+---
+# External Service for local access
+apiVersion: v1
+kind: Service
+metadata:
+  name: vault-external
+  namespace: vault
+  labels:
+    app: vault
+spec:
+  selector:
+    app: vault
+  ports:
+  - name: http
+    port: 8200
+    targetPort: 8200
+  type: LoadBalancer
