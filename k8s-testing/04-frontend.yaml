@@ -73,9 +73,11 @@ spec:
             requests:
               memory: "128Mi"
               cpu: "50m"
+              storage: "1Gi"
             limits:
               memory: "256Mi"
               cpu: "150m"
+              storage: "2Gi"
           livenessProbe:
             httpGet:
               path: /

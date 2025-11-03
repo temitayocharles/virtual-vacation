@@ -166,9 +166,11 @@ spec:
             requests:
               memory: "64Mi"
               cpu: "25m"
+              storage: "1Gi"
             limits:
               memory: "128Mi"
               cpu: "100m"
+              storage: "2Gi"
           livenessProbe:
             httpGet:
               path: /health

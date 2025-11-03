@@ -148,6 +148,7 @@ spec:
         service: prometheus
     spec:
       serviceAccountName: virtual-vacation-sa
+      automountServiceAccountToken: false
       securityContext:
         runAsUser: 65534
         runAsGroup: 65534
@@ -184,9 +185,11 @@ spec:
             requests:
               memory: "256Mi"
               cpu: "100m"
+              storage: "10Gi"
             limits:
               memory: "512Mi"
               cpu: "200m"
+              storage: "20Gi"
           livenessProbe:
             httpGet:
               path: /-/healthy
@@ -400,6 +403,7 @@ spec:
         service: grafana
     spec:
       serviceAccountName: virtual-vacation-sa
+      automountServiceAccountToken: false
       securityContext:
         runAsUser: 472
         runAsGroup: 472
@@ -443,9 +447,11 @@ spec:
             requests:
               memory: "128Mi"
               cpu: "50m"
+              storage: "2Gi"
             limits:
               memory: "256Mi"
               cpu: "100m"
+              storage: "5Gi"
           livenessProbe:
             httpGet:
               path: /api/health
@@ -600,9 +606,11 @@ spec:
             requests:
               memory: "64Mi"
               cpu: "10m"
+              storage: "1Gi"
             limits:
               memory: "128Mi"
               cpu: "50m"
+              storage: "2Gi"
           livenessProbe:
             exec:
               command:

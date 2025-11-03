@@ -46,9 +46,11 @@ spec:
             requests:
               memory: "256Mi"
               cpu: "100m"
+              storage: "10Gi"
             limits:
               memory: "512Mi"
               cpu: "250m"
+              storage: "20Gi"
           livenessProbe:
             exec:
               command:
@@ -140,9 +142,11 @@ spec:
             requests:
               memory: "256Mi"
               cpu: "100m"
+              storage: "50Gi"
             limits:
               memory: "512Mi"
               cpu: "250m"
+              storage: "100Gi"
           livenessProbe:
             httpGet:
               path: /minio/health/live
@@ -230,7 +234,7 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: media-gateway
-          image: virtual-vacation-media-gateway:latest
+          image: virtual-vacation-media-gateway:1.0.0
           imagePullPolicy: Never
           ports:
             - containerPort: 8000
@@ -259,9 +263,11 @@ spec:
             requests:
               memory: "256Mi"
               cpu: "100m"
+              storage: "5Gi"
             limits:
               memory: "512Mi"
               cpu: "250m"
+              storage: "10Gi"
           livenessProbe:
             httpGet:
               path: /health

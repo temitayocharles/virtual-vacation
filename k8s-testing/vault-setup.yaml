@@ -88,9 +88,10 @@ spec:
         app: vault
     spec:
       serviceAccountName: vault
+      automountServiceAccountToken: false
       containers:
       - name: vault
-        image: vault:latest
+        image: vault:1.15
         imagePullPolicy: Always
         ports:
         - containerPort: 8200
@@ -117,9 +118,11 @@ spec:
           requests:
             memory: "256Mi"
             cpu: "100m"
+            storage: "5Gi"
           limits:
             memory: "512Mi"
             cpu: "500m"
+            storage: "10Gi"
         livenessProbe:
           httpGet:
             path: /v1/sys/health

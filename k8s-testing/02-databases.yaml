@@ -28,6 +28,7 @@ spec:
         component: database
     spec:
       serviceAccountName: virtual-vacation-sa
+      automountServiceAccountToken: false
       containers:
         - name: postgres
           image: postgres:15-alpine
@@ -62,9 +63,11 @@ spec:
             requests:
               memory: "256Mi"
               cpu: "100m"
+              storage: "10Gi"
             limits:
               memory: "512Mi"
               cpu: "250m"
+              storage: "20Gi"
           livenessProbe:
             exec:
               command:
@@ -121,6 +124,7 @@ spec:
         component: cache
     spec:
       serviceAccountName: virtual-vacation-sa
+      automountServiceAccountToken: false
       containers:
         - name: redis
           image: redis:7.2-alpine
@@ -135,9 +139,11 @@ spec:
             requests:
               memory: "128Mi"
               cpu: "50m"
+              storage: "5Gi"
             limits:
               memory: "256Mi"
               cpu: "100m"
+              storage: "10Gi"
           livenessProbe:
             exec:
               command:

@@ -18,9 +18,10 @@ spec:
         component: api
     spec:
       serviceAccountName: virtual-vacation-sa
+      automountServiceAccountToken: false
       containers:
       - name: backend
-        image: temitayocharles/virtual-vacation-backend:latest
+        image: temitayocharles/virtual-vacation-backend:1.0.0
         ports:
         - containerPort: 5000
           name: http
@@ -48,9 +49,11 @@ spec:
           requests:
             memory: "256Mi"
             cpu: "100m"
+            storage: "2Gi"
           limits:
             memory: "512Mi"
             cpu: "500m"
+            storage: "5Gi"
         livenessProbe:
           httpGet:
             path: /health

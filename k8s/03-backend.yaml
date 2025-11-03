@@ -35,13 +35,14 @@ spec:
         prometheus.io/path: "/metrics"
     spec:
       serviceAccountName: virtual-vacation-sa
+      automountServiceAccountToken: false
       securityContext:
         runAsUser: 1001
         runAsGroup: 1001
         fsGroup: 1001
       containers:
         - name: backend
-          image: virtual-vacation-backend:latest
+          image: virtual-vacation-backend:1.0.0
           imagePullPolicy: Always
           securityContext:
             allowPrivilegeEscalation: false
@@ -129,9 +130,11 @@ spec:
             requests:
               memory: "512Mi"
               cpu: "250m"
+              storage: "2Gi"
             limits:
               memory: "1Gi"
               cpu: "500m"
+              storage: "5Gi"
           livenessProbe:
             httpGet:
               path: /health

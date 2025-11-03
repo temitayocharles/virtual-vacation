@@ -1,170 +1,170 @@
-name: Build and Push Application Images
+# name: Build and Push Application Images
 
-on:
-  push:
-    branches:
-      - main
-      - develop
-    tags:
-      - 'v*'
-    paths-ignore:
-      - 'frontend/package*.json'
-      - 'backend/package*.json'
-      - 'frontend/Dockerfile.base'
-      - 'backend/Dockerfile.base'
-      - '.github/workflows/build-base-images.yml'
-  pull_request:
-    branches:
-      - main
-    paths-ignore:
-      - 'frontend/package*.json'
-      - 'backend/package*.json'
-      - 'frontend/Dockerfile.base'
-      - 'backend/Dockerfile.base'
-  workflow_dispatch:
-  workflow_run:
-    workflows: ["Build Base Images"]
-    types:
-      - completed
+# on:
+#   push:
+#     branches:
+#       - main
+#       - develop
+#     tags:
+#       - 'v*'
+#     paths-ignore:
+#       - 'frontend/package*.json'
+#       - 'backend/package*.json'
+#       - 'frontend/Dockerfile.base'
+#       - 'backend/Dockerfile.base'
+#       - '.github/workflows/build-base-images.yml'
+#   pull_request:
+#     branches:
+#       - main
+#     paths-ignore:
+#       - 'frontend/package*.json'
+#       - 'backend/package*.json'
+#       - 'frontend/Dockerfile.base'
+#       - 'backend/Dockerfile.base'
+#   workflow_dispatch:
+#   workflow_run:
+#     workflows: ["Build Base Images"]
+#     types:
+#       - completed
 
-env:
-  REGISTRY_GHCR: ghcr.io
-  REGISTRY_DOCKER: docker.io
-  IMAGE_NAME_BACKEND: virtual-vacation-backend
-  IMAGE_NAME_FRONTEND: virtual-vacation-frontend
+# env:
+#   REGISTRY_GHCR: ghcr.io
+#   REGISTRY_DOCKER: docker.io
+#   IMAGE_NAME_BACKEND: virtual-vacation-backend
+#   IMAGE_NAME_FRONTEND: virtual-vacation-frontend
 
-jobs:
-  build-and-push:
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    permissions:
-      contents: read
-      packages: write
+# jobs:
+#   build-and-push:
+#     runs-on: ubuntu-latest
+#     timeout-minutes: 60
+#     permissions:
+#       contents: read
+#       packages: write
 
-    strategy:
-      matrix:
-        include:
-          - service: backend
-            dockerfile: backend/Dockerfile
-            context: backend
-            image_name: virtual-vacation-backend
-          - service: frontend
-            dockerfile: frontend/Dockerfile
-            context: frontend
-            image_name: virtual-vacation-frontend
+#     strategy:
+#       matrix:
+#         include:
+#           - service: backend
+#             dockerfile: backend/Dockerfile
+#             context: backend
+#             image_name: virtual-vacation-backend
+#           - service: frontend
+#             dockerfile: frontend/Dockerfile
+#             context: frontend
+#             image_name: virtual-vacation-frontend
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+#     steps:
+#       - name: Checkout repository
+#         uses: actions/checkout@v4
 
-      - name: Get base image tags
-        id: base-tags
-        run: |
-          # Try to get base image tags from previous builds
-          if [ -f ".github/base-images/${{ matrix.service }}-tag.txt" ]; then
-            BASE_TAG=$(cat .github/base-images/${{ matrix.service }}-tag.txt)
-            echo "base_tag=${BASE_TAG}" >> $GITHUB_OUTPUT
-            echo "✅ Using base image tag: ${BASE_TAG}"
-          else
-            echo "base_tag=latest" >> $GITHUB_OUTPUT
-            echo "⚠️ No specific base tag found, using 'latest'"
-          fi
+#       - name: Get base image tags
+#         id: base-tags
+#         run: |
+#           # Try to get base image tags from previous builds
+#           if [ -f ".github/base-images/${{ matrix.service }}-tag.txt" ]; then
+#             BASE_TAG=$(cat .github/base-images/${{ matrix.service }}-tag.txt)
+#             echo "base_tag=${BASE_TAG}" >> $GITHUB_OUTPUT
+#             echo "✅ Using base image tag: ${BASE_TAG}"
+#           else
+#             echo "base_tag=latest" >> $GITHUB_OUTPUT
+#             echo "⚠️ No specific base tag found, using 'latest'"
+#           fi
 
-      - name: Check base image availability
-        id: check-base
-        run: |
-          BASE_IMAGE="temitayocharles/virtual-vacation-${{ matrix.service }}-base:${{ steps.base-tags.outputs.base_tag }}"
-          echo "Checking if base image exists: ${BASE_IMAGE}"
+#       - name: Check base image availability
+#         id: check-base
+#         run: |
+#           BASE_IMAGE="temitayocharles/virtual-vacation-${{ matrix.service }}-base:${{ steps.base-tags.outputs.base_tag }}"
+#           echo "Checking if base image exists: ${BASE_IMAGE}"
           
-          if docker manifest inspect ${BASE_IMAGE} > /dev/null 2>&1; then
-            echo "use_base=true" >> $GITHUB_OUTPUT
-            echo "✅ Base image found: ${BASE_IMAGE}"
-          else
-            echo "use_base=false" >> $GITHUB_OUTPUT
-            echo "❌ Base image not found, will use fallback build"
-          fi
+#           if docker manifest inspect ${BASE_IMAGE} > /dev/null 2>&1; then
+#             echo "use_base=true" >> $GITHUB_OUTPUT
+#             echo "✅ Base image found: ${BASE_IMAGE}"
+#           else
+#             echo "use_base=false" >> $GITHUB_OUTPUT
+#             echo "❌ Base image not found, will use fallback build"
+#           fi
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+#       - name: Set up Docker Buildx
+#         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to Docker Hub
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY_DOCKER }}
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+#       - name: Log in to Docker Hub
+#         if: github.event_name != 'pull_request'
+#         uses: docker/login-action@v3
+#         with:
+#           registry: ${{ env.REGISTRY_DOCKER }}
+#           username: ${{ secrets.DOCKERHUB_USERNAME }}
+#           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Log in to GitHub Container Registry
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY_GHCR }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+#       - name: Log in to GitHub Container Registry
+#         if: github.event_name != 'pull_request'
+#         uses: docker/login-action@v3
+#         with:
+#           registry: ${{ env.REGISTRY_GHCR }}
+#           username: ${{ github.actor }}
+#           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: |
-            ${{ env.REGISTRY_DOCKER }}/${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.image_name }}
-            ${{ env.REGISTRY_GHCR }}/${{ github.repository_owner }}/${{ matrix.image_name }}
-          tags: |
-            type=ref,event=branch
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable={{is_default_branch}}
+#       - name: Extract metadata
+#         id: meta
+#         uses: docker/metadata-action@v5
+#         with:
+#           images: |
+#             ${{ env.REGISTRY_DOCKER }}/${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.image_name }}
+#             ${{ env.REGISTRY_GHCR }}/${{ github.repository_owner }}/${{ matrix.image_name }}
+#           tags: |
+#             type=ref,event=branch
+#             type=semver,pattern={{version}}
+#             type=semver,pattern={{major}}.{{minor}}
+#             type=semver,pattern={{major}}
+#             type=sha,prefix={{branch}}-
+#             type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Build and push to Docker Hub and GHCR
-        id: build
-        uses: docker/build-push-action@v5
-        with:
-          context: ${{ matrix.context }}
-          file: ${{ steps.check-base.outputs.use_base == 'true' && matrix.dockerfile || format('{0}.fallback', matrix.dockerfile) }}
-          platforms: linux/amd64,linux/arm64
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          build-args: |
-            BASE_IMAGE_TAG=${{ steps.base-tags.outputs.base_tag }}
+#       - name: Build and push to Docker Hub and GHCR
+#         id: build
+#         uses: docker/build-push-action@v5
+#         with:
+#           context: ${{ matrix.context }}
+#           file: ${{ steps.check-base.outputs.use_base == 'true' && matrix.dockerfile || format('{0}.fallback', matrix.dockerfile) }}
+#           platforms: linux/amd64,linux/arm64
+#           push: ${{ github.event_name != 'pull_request' }}
+#           tags: ${{ steps.meta.outputs.tags }}
+#           labels: ${{ steps.meta.outputs.labels }}
+#           cache-from: type=gha
+#           cache-to: type=gha,mode=max
+#           build-args: |
+#             BASE_IMAGE_TAG=${{ steps.base-tags.outputs.base_tag }}
 
-      - name: Build Strategy Summary
-        run: |
-          if [ "${{ steps.check-base.outputs.use_base }}" == "true" ]; then
-            echo "🚀 Used FAST build strategy with base image: temitayocharles/virtual-vacation-${{ matrix.service }}-base:${{ steps.base-tags.outputs.base_tag }}"
-            echo "⚡ Build completed using pre-built dependencies"
-          else
-            echo "🐌 Used FALLBACK build strategy (full build from scratch)"
-            echo "📝 Base image will be available for next builds"
-          fi
+#       - name: Build Strategy Summary
+#         run: |
+#           if [ "${{ steps.check-base.outputs.use_base }}" == "true" ]; then
+#             echo "🚀 Used FAST build strategy with base image: temitayocharles/virtual-vacation-${{ matrix.service }}-base:${{ steps.base-tags.outputs.base_tag }}"
+#             echo "⚡ Build completed using pre-built dependencies"
+#           else
+#             echo "🐌 Used FALLBACK build strategy (full build from scratch)"
+#             echo "📝 Base image will be available for next builds"
+#           fi
 
-      - name: Image digest (Backend)
-        if: matrix.service == 'backend'
-        run: echo "Backend image pushed with digest ${{ steps.build.outputs.digest }}"
+#       - name: Image digest (Backend)
+#         if: matrix.service == 'backend'
+#         run: echo "Backend image pushed with digest ${{ steps.build.outputs.digest }}"
 
-      - name: Image digest (Frontend)
-        if: matrix.service == 'frontend'
-        run: echo "Frontend image pushed with digest ${{ steps.build.outputs.digest }}"
+#       - name: Image digest (Frontend)
+#         if: matrix.service == 'frontend'
+#         run: echo "Frontend image pushed with digest ${{ steps.build.outputs.digest }}"
 
-  verify-images:
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request'
+#   verify-images:
+#     needs: build-and-push
+#     runs-on: ubuntu-latest
+#     if: github.event_name != 'pull_request'
     
-    strategy:
-      matrix:
-        image:
-          - backend
-          - frontend
+#     strategy:
+#       matrix:
+#         image:
+#           - backend
+#           - frontend
 
-    steps:
-      - name: Verify multiarch images were pushed
-        run: |
-          echo "✓ Multiarch images for ${{ matrix.image }} pushed successfully to:"
-          echo "  - Docker Hub: ${{ env.REGISTRY_DOCKER }}/${{ secrets.DOCKERHUB_USERNAME }}/virtual-vacation-${{ matrix.image }}"
-          echo "  - GHCR: ${{ env.REGISTRY_GHCR }}/${{ github.repository_owner }}/virtual-vacation-${{ matrix.image }}"
+#     steps:
+#       - name: Verify multiarch images were pushed
+#         run: |
+#           echo "✓ Multiarch images for ${{ matrix.image }} pushed successfully to:"
+#           echo "  - Docker Hub: ${{ env.REGISTRY_DOCKER }}/${{ secrets.DOCKERHUB_USERNAME }}/virtual-vacation-${{ matrix.image }}"
+#           echo "  - GHCR: ${{ env.REGISTRY_GHCR }}/${{ github.repository_owner }}/virtual-vacation-${{ matrix.image }}"

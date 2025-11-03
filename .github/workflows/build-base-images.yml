@@ -1,120 +1,120 @@
-name: Build Base Images
+# name: Build Base Images
 
-on:
-  push:
-    paths:
-      - 'frontend/package*.json'
-      - 'backend/package*.json'
-      - 'frontend/Dockerfile.base'
-      - 'backend/Dockerfile.base'
-    branches:
-      - main
-  workflow_dispatch:
-    inputs:
-      force_rebuild:
-        description: 'Force rebuild base images'
-        required: false
-        default: 'false'
+# on:
+#   push:
+#     paths:
+#       - 'frontend/package*.json'
+#       - 'backend/package*.json'
+#       - 'frontend/Dockerfile.base'
+#       - 'backend/Dockerfile.base'
+#     branches:
+#       - main
+#   workflow_dispatch:
+#     inputs:
+#       force_rebuild:
+#         description: 'Force rebuild base images'
+#         required: false
+#         default: 'false'
 
-env:
-  REGISTRY_DOCKER: docker.io
+# env:
+#   REGISTRY_DOCKER: docker.io
 
-jobs:
-  build-base-images:
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    permissions:
-      contents: read
-      packages: write
+# jobs:
+#   build-base-images:
+#     runs-on: ubuntu-latest
+#     timeout-minutes: 45
+#     permissions:
+#       contents: read
+#       packages: write
 
-    strategy:
-      matrix:
-        include:
-          - service: frontend
-            dockerfile: frontend/Dockerfile.base
-            context: frontend
-            image_name: virtual-vacation-frontend-base
-          - service: backend
-            dockerfile: backend/Dockerfile.base
-            context: backend
-            image_name: virtual-vacation-backend-base
+#     strategy:
+#       matrix:
+#         include:
+#           - service: frontend
+#             dockerfile: frontend/Dockerfile.base
+#             context: frontend
+#             image_name: virtual-vacation-frontend-base
+#           - service: backend
+#             dockerfile: backend/Dockerfile.base
+#             context: backend
+#             image_name: virtual-vacation-backend-base
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+#     steps:
+#       - name: Checkout repository
+#         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+#       - name: Set up Docker Buildx
+#         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY_DOCKER }}
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+#       - name: Log in to Docker Hub
+#         uses: docker/login-action@v3
+#         with:
+#           registry: ${{ env.REGISTRY_DOCKER }}
+#           username: ${{ secrets.DOCKERHUB_USERNAME }}
+#           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Generate image tags
-        id: meta
-        run: |
-          # Create unique tag based on package.json hash
-          PACKAGE_HASH=$(sha256sum ${{ matrix.context }}/package*.json | sha256sum | cut -c1-8)
-          echo "PACKAGE_HASH=${PACKAGE_HASH}" >> $GITHUB_OUTPUT
-          echo "IMAGE_TAG=deps-${PACKAGE_HASH}" >> $GITHUB_OUTPUT
-          echo "FULL_IMAGE=${{ env.REGISTRY_DOCKER }}/${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.image_name }}" >> $GITHUB_OUTPUT
+#       - name: Generate image tags
+#         id: meta
+#         run: |
+#           # Create unique tag based on package.json hash
+#           PACKAGE_HASH=$(sha256sum ${{ matrix.context }}/package*.json | sha256sum | cut -c1-8)
+#           echo "PACKAGE_HASH=${PACKAGE_HASH}" >> $GITHUB_OUTPUT
+#           echo "IMAGE_TAG=deps-${PACKAGE_HASH}" >> $GITHUB_OUTPUT
+#           echo "FULL_IMAGE=${{ env.REGISTRY_DOCKER }}/${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.image_name }}" >> $GITHUB_OUTPUT
 
-      - name: Check if base image exists
-        id: check
-        run: |
-          IMAGE_TAG="${{ steps.meta.outputs.IMAGE_TAG }}"
-          FULL_IMAGE="${{ steps.meta.outputs.FULL_IMAGE }}"
+#       - name: Check if base image exists
+#         id: check
+#         run: |
+#           IMAGE_TAG="${{ steps.meta.outputs.IMAGE_TAG }}"
+#           FULL_IMAGE="${{ steps.meta.outputs.FULL_IMAGE }}"
           
-          if docker manifest inspect ${FULL_IMAGE}:${IMAGE_TAG} > /dev/null 2>&1; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-            echo "✅ Base image ${FULL_IMAGE}:${IMAGE_TAG} already exists"
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
-            echo "❌ Base image ${FULL_IMAGE}:${IMAGE_TAG} needs to be built"
-          fi
+#           if docker manifest inspect ${FULL_IMAGE}:${IMAGE_TAG} > /dev/null 2>&1; then
+#             echo "exists=true" >> $GITHUB_OUTPUT
+#             echo "✅ Base image ${FULL_IMAGE}:${IMAGE_TAG} already exists"
+#           else
+#             echo "exists=false" >> $GITHUB_OUTPUT
+#             echo "❌ Base image ${FULL_IMAGE}:${IMAGE_TAG} needs to be built"
+#           fi
 
-      - name: Build and push base image
-        if: steps.check.outputs.exists == 'false' || github.event.inputs.force_rebuild == 'true'
-        uses: docker/build-push-action@v5
-        with:
-          context: ${{ matrix.context }}
-          file: ${{ matrix.dockerfile }}
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: |
-            ${{ steps.meta.outputs.FULL_IMAGE }}:${{ steps.meta.outputs.IMAGE_TAG }}
-            ${{ steps.meta.outputs.FULL_IMAGE }}:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+#       - name: Build and push base image
+#         if: steps.check.outputs.exists == 'false' || github.event.inputs.force_rebuild == 'true'
+#         uses: docker/build-push-action@v5
+#         with:
+#           context: ${{ matrix.context }}
+#           file: ${{ matrix.dockerfile }}
+#           platforms: linux/amd64,linux/arm64
+#           push: true
+#           tags: |
+#             ${{ steps.meta.outputs.FULL_IMAGE }}:${{ steps.meta.outputs.IMAGE_TAG }}
+#             ${{ steps.meta.outputs.FULL_IMAGE }}:latest
+#           cache-from: type=gha
+#           cache-to: type=gha,mode=max
 
-      - name: Update base image tag file
-        if: steps.check.outputs.exists == 'false' || github.event.inputs.force_rebuild == 'true'
-        run: |
-          mkdir -p .github/base-images
-          echo "${{ steps.meta.outputs.IMAGE_TAG }}" > .github/base-images/${{ matrix.service }}-tag.txt
-          echo "📝 Updated base image tag for ${{ matrix.service }}: ${{ steps.meta.outputs.IMAGE_TAG }}"
+#       - name: Update base image tag file
+#         if: steps.check.outputs.exists == 'false' || github.event.inputs.force_rebuild == 'true'
+#         run: |
+#           mkdir -p .github/base-images
+#           echo "${{ steps.meta.outputs.IMAGE_TAG }}" > .github/base-images/${{ matrix.service }}-tag.txt
+#           echo "📝 Updated base image tag for ${{ matrix.service }}: ${{ steps.meta.outputs.IMAGE_TAG }}"
 
-      - name: Commit base image tag updates
-        if: steps.check.outputs.exists == 'false' || github.event.inputs.force_rebuild == 'true'
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add .github/base-images/
-          git commit -m "Update ${{ matrix.service }} base image tag: ${{ steps.meta.outputs.IMAGE_TAG }}" || exit 0
-          git push || echo "No changes to push"
+#       - name: Commit base image tag updates
+#         if: steps.check.outputs.exists == 'false' || github.event.inputs.force_rebuild == 'true'
+#         run: |
+#           git config --local user.email "action@github.com"
+#           git config --local user.name "GitHub Action"
+#           git add .github/base-images/
+#           git commit -m "Update ${{ matrix.service }} base image tag: ${{ steps.meta.outputs.IMAGE_TAG }}" || exit 0
+#           git push || echo "No changes to push"
 
-  summary:
-    needs: build-base-images
-    runs-on: ubuntu-latest
-    steps:
-      - name: Build Summary
-        run: |
-          echo "🏗️ Base Image Build Complete!"
-          echo ""
-          echo "✅ Frontend base: temitayocharles/virtual-vacation-frontend-base"
-          echo "✅ Backend base: temitayocharles/virtual-vacation-backend-base"
-          echo ""
-          echo "🚀 Application images can now use these optimized base images!"
+#   summary:
+#     needs: build-base-images
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Build Summary
+#         run: |
+#           echo "🏗️ Base Image Build Complete!"
+#           echo ""
+#           echo "✅ Frontend base: temitayocharles/virtual-vacation-frontend-base"
+#           echo "✅ Backend base: temitayocharles/virtual-vacation-backend-base"
+#           echo ""
+#           echo "🚀 Application images can now use these optimized base images!"

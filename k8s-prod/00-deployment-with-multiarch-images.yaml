@@ -72,6 +72,7 @@ spec:
       labels:
         app: postgres
     spec:
+      automountServiceAccountToken: false
       containers:
       - name: postgres
         image: postgres:15-alpine
@@ -111,9 +112,11 @@ spec:
           requests:
             memory: "256Mi"
             cpu: "100m"
+            storage: "10Gi"
           limits:
             memory: "512Mi"
             cpu: "500m"
+            storage: "20Gi"
       volumes:
       - name: postgres-storage
         emptyDir: {}
@@ -137,6 +140,7 @@ spec:
       labels:
         app: redis
     spec:
+      automountServiceAccountToken: false
       containers:
       - name: redis
         image: redis:7.2-alpine
@@ -163,9 +167,11 @@ spec:
           requests:
             memory: "128Mi"
             cpu: "50m"
+            storage: "5Gi"
           limits:
             memory: "256Mi"
             cpu: "200m"
+            storage: "10Gi"
 
 ---
 # PostgreSQL Service
@@ -227,6 +233,7 @@ spec:
         app: backend
         version: v1
     spec:
+      automountServiceAccountToken: false
       initContainers:
       - name: wait-for-postgres
         image: busybox:1.36
@@ -237,10 +244,10 @@ spec:
       containers:
       - name: backend
         # Option 1: From Docker Hub
-        image: YOUR_USERNAME/virtual-vacation-backend:latest
+        image: YOUR_USERNAME/virtual-vacation-backend:1.0.0
         
         # Option 2: From GitHub Container Registry (uncomment to use)
-        # image: ghcr.io/YOUR_ORG/virtual-vacation-backend:latest
+        # image: ghcr.io/YOUR_ORG/virtual-vacation-backend:1.0.0
         # imagePullSecrets:
         # - name: ghcr-secret
         
@@ -303,9 +310,11 @@ spec:
           requests:
             memory: "256Mi"
             cpu: "100m"
+            storage: "2Gi"
           limits:
             memory: "512Mi"
             cpu: "500m"
+            storage: "5Gi"
 
 ---
 # Backend Service
@@ -352,6 +361,7 @@ spec:
         app: frontend
         version: v1
     spec:
+      automountServiceAccountToken: false
       initContainers:
       - name: wait-for-backend
         image: busybox:1.36
@@ -359,10 +369,10 @@ spec:
       containers:
       - name: frontend
         # Option 1: From Docker Hub
-        image: YOUR_USERNAME/virtual-vacation-frontend:latest
+        image: YOUR_USERNAME/virtual-vacation-frontend:1.0.0
         
         # Option 2: From GitHub Container Registry (uncomment to use)
-        # image: ghcr.io/YOUR_ORG/virtual-vacation-frontend:latest
+        # image: ghcr.io/YOUR_ORG/virtual-vacation-frontend:1.0.0
         # imagePullSecrets:
         # - name: ghcr-secret
         
@@ -405,9 +415,11 @@ spec:
           requests:
             memory: "128Mi"
             cpu: "50m"
+            storage: "1Gi"
           limits:
             memory: "256Mi"
             cpu: "200m"
+            storage: "2Gi"
 
 ---
 # Frontend Service
@@ -447,6 +459,7 @@ spec:
       labels:
         app: nginx-ingress
     spec:
+      automountServiceAccountToken: false
       containers:
       - name: nginx
         image: nginx:1.25-alpine
@@ -458,9 +471,11 @@ spec:
           requests:
             memory: "64Mi"
             cpu: "50m"
+            storage: "1Gi"
           limits:
             memory: "256Mi"
             cpu: "200m"
+            storage: "2Gi"
 
 ---
 # Nginx Ingress Service

@@ -26,6 +26,7 @@ spec:
         component: database
     spec:
       serviceAccountName: virtual-vacation-sa
+      automountServiceAccountToken: false
       securityContext:
         runAsUser: 999
         runAsGroup: 999
@@ -73,9 +74,11 @@ spec:
             requests:
               memory: "512Mi"
               cpu: "250m"
+              storage: "10Gi"
             limits:
               memory: "1Gi"
               cpu: "500m"
+              storage: "20Gi"
           livenessProbe:
             exec:
               command:
@@ -154,6 +157,7 @@ spec:
         component: cache
     spec:
       serviceAccountName: virtual-vacation-sa
+      automountServiceAccountToken: false
       securityContext:
         runAsUser: 999
         runAsGroup: 999
@@ -205,9 +209,11 @@ spec:
             requests:
               memory: "256Mi"
               cpu: "100m"
+              storage: "5Gi"
             limits:
               memory: "512Mi"
               cpu: "200m"
+              storage: "10Gi"
           livenessProbe:
             exec:
               command:

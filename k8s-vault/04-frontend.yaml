@@ -17,9 +17,11 @@ spec:
         app: frontend
         component: web
     spec:
+      serviceAccountName: virtual-vacation-sa
+      automountServiceAccountToken: false
       containers:
       - name: frontend
-        image: temitayocharles/virtual-vacation-frontend:latest
+        image: temitayocharles/virtual-vacation-frontend:1.0.0
         ports:
         - containerPort: 80
           name: http
@@ -36,9 +38,11 @@ spec:
           requests:
             memory: "128Mi"
             cpu: "50m"
+            storage: "1Gi"
           limits:
             memory: "256Mi"
             cpu: "200m"
+            storage: "2Gi"
         livenessProbe:
           httpGet:
             path: /health
