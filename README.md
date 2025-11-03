@@ -85,11 +85,16 @@ vim k8s/01-namespace-config.yaml
 
 ### 3. Deploy to Kubernetes
 ```bash
-# Make deployment script executable
-chmod +x deploy.sh
+# Deploy all components in order
+kubectl apply -f k8s/01-namespace-config.yaml
+kubectl apply -f k8s/02-databases.yaml
+kubectl apply -f k8s/03-backend.yaml
+kubectl apply -f k8s/04-frontend.yaml
+kubectl apply -f k8s/05-nginx-ingress.yaml
+kubectl apply -f k8s/06-monitoring.yaml
 
-# Deploy all components
-./deploy.sh
+# Or deploy everything at once
+kubectl apply -f k8s/
 ```
 
 ### 4. Access Application
