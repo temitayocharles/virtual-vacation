@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: virtual-vacation
+  labels:
+    app: backend
+    component: api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+        component: api
+    spec:
+      serviceAccountName: virtual-vacation-sa
+      containers:
+      - name: backend
+        image: temitayocharles/virtual-vacation-backend:latest
+        ports:
+        - containerPort: 5000
+          name: http
+        envFrom:
+        - configMapRef:
+            name: virtual-vacation-config
+        - secretRef:
+            name: api-keys
+        - secretRef:
+            name: database-secrets
+        env:
+        # Database URL constructed from config and secrets
+        - name: DATABASE_URL
+          value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)"
+        # Redis URL
+        - name: REDIS_URL
+          value: "redis://$(REDIS_HOST):$(REDIS_PORT)/$(REDIS_DB)"
+        # Disable file logging to avoid permission issues
+        - name: DISABLE_FILE_LOGGING
+          value: "true"
+        # Use console logging only
+        - name: LOG_TO_CONSOLE
+          value: "true"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+  namespace: virtual-vacation
+  labels:
+    app: backend
+spec:
+  selector:
+    app: backend
+  ports:
+  - name: http
+    port: 5000
+    targetPort: 5000
+  type: ClusterIP
