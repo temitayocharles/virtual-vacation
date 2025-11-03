@@ -21,7 +21,7 @@ kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=vault -n $NAMES
 # Get Vault pod name
 VAULT_POD=$(kubectl get pods -n $NAMESPACE -l app.kubernetes.io/name=vault -o jsonpath='{.items[0].metadata.name}')
 
-if [ -z "$VAULT_POD" ]; then
+if [[ -z "$VAULT_POD" ]]; then
     echo "❌ Vault pod not found. Deploy Vault first:"
     echo "   kubectl apply -f k8s-testing/vault-setup.yaml"
     exit 1

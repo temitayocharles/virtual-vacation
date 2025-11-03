@@ -197,7 +197,7 @@ services:
     image: prometheuscommunity/postgres-exporter:latest
     container_name: virtual-vacation-postgres-exporter
     environment:
-      DATA_SOURCE_NAME: postgresql://vacation_user:vacation_password@postgres:5432/virtual_vacation?sslmode=disable
+      DATA_SOURCE_NAME: postgresql://vacation_user:${DB_PASSWORD}@postgres:5432/virtual_vacation?sslmode=disable
     ports:
       - "9187:9187"
     depends_on:

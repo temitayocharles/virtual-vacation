@@ -13,7 +13,7 @@ services:
     environment:
       POSTGRES_DB: virtual_vacation
       POSTGRES_USER: vacation_user
-      POSTGRES_PASSWORD: vzWcioNW7UMxjxUDLA6bmtOvxXoOAdlm
+      POSTGRES_PASSWORD: ${PROD_DB_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
@@ -45,12 +45,12 @@ services:
       - "5000:5000"
     environment:
       # Database Configuration
-      DATABASE_URL: postgresql://vacation_user:vzWcioNW7UMxjxUDLA6bmtOvxXoOAdlm@postgres:5432/virtual_vacation
+      DATABASE_URL: postgresql://vacation_user:${PROD_DB_PASSWORD}@postgres:5432/virtual_vacation
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       POSTGRES_DB: virtual_vacation
       POSTGRES_USER: vacation_user
-      POSTGRES_PASSWORD: vzWcioNW7UMxjxUDLA6bmtOvxXoOAdlm
+      POSTGRES_PASSWORD: ${PROD_DB_PASSWORD}
 
       # Redis Configuration
       REDIS_URL: redis://redis:6379

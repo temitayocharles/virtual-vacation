@@ -8,7 +8,7 @@ services:
     environment:
       POSTGRES_DB: virtual_vacation_test
       POSTGRES_USER: test_user
-      POSTGRES_PASSWORD: test_password
+      POSTGRES_PASSWORD: ${TEST_DB_PASSWORD}
     ports:
       - "5433:5432"  # Use different port to avoid conflicts
     volumes:

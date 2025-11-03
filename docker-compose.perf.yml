@@ -8,7 +8,7 @@ services:
     environment:
       POSTGRES_DB: virtual_vacation_perf
       POSTGRES_USER: perf_user
-      POSTGRES_PASSWORD: perf_password
+      POSTGRES_PASSWORD: ${PERF_DB_PASSWORD}
     ports:
       - "5434:5432"  # Different port to avoid conflicts
     volumes:
@@ -49,12 +49,12 @@ services:
     environment:
       NODE_ENV: production
       PORT: 5002
-      DATABASE_URL: postgresql://perf_user:perf_password@postgres:5432/virtual_vacation_perf
+      DATABASE_URL: postgresql://perf_user:${PERF_DB_PASSWORD}@postgres:5432/virtual_vacation_perf
       TEST_DB_HOST: postgres
       TEST_DB_PORT: 5432
       TEST_DB_NAME: virtual_vacation_perf
       TEST_DB_USER: perf_user
-      TEST_DB_PASSWORD: perf_password
+      TEST_DB_PASSWORD: ${PERF_DB_PASSWORD}
       REDIS_URL: redis://redis:6379
       TEST_REDIS_URL: redis://redis:6379
       JWT_SECRET: perf-jwt-secret-for-performance-tests

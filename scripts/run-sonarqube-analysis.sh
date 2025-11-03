@@ -66,7 +66,7 @@ echo ""
 print_header "Analyzing Frontend (TypeScript/React)"
 cd "$PROJECT_ROOT/frontend"
 
-if [ ! -d "node_modules" ]; then
+if [[ ! -d "node_modules" ]]; then
     print_warning "Installing frontend dependencies..."
     npm ci
 fi
@@ -95,7 +95,7 @@ echo ""
 print_header "Analyzing Backend (TypeScript/Node.js)"
 cd "$PROJECT_ROOT/backend"
 
-if [ ! -d "node_modules" ]; then
+if [[ ! -d "node_modules" ]]; then
     print_warning "Installing backend dependencies..."
     npm ci
 fi
@@ -124,7 +124,7 @@ echo ""
 print_header "Analyzing Media Gateway (Python)"
 cd "$PROJECT_ROOT/media-gateway"
 
-if [ ! -f "venv/bin/activate" ]; then
+if [[ ! -f "venv/bin/activate" ]]; then
     print_warning "Creating Python virtual environment..."
     python3 -m venv venv
 fi

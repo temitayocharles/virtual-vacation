@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express'
-import axios from 'axios'
+import axios, { AxiosError } from 'axios'
 import Joi from 'joi'
 import { cache } from '../config/redis'
 import { logger } from '../utils/logger'
@@ -32,26 +32,87 @@ const weatherQuerySchema = Joi.object({
   })
 })
 
-// Validate external API response
+// Handle API errors and return appropriate responses
+const handleWeatherError = (error: unknown, res: Response, context: string = 'weather'): void => {
+  if (!axios.isAxiosError(error)) {
+    logger.error(`Error fetching ${context} data:`, error)
+    res.status(500).json({
+      success: false,
+      error: `Failed to fetch ${context} data`
+    })
+    return
+  }
+
+  const axiosErr = error as AxiosError
+
+  if (axiosErr.code === 'ECONNABORTED') {
+    logger.error(`${context} API request timeout`)
+    res.status(504).json({
+      success: false,
+      error: `${context} service timeout`
+    })
+  } else if (axiosErr.response?.status === 401) {
+    logger.error('Invalid OpenWeather API key')
+    res.status(500).json({
+      success: false,
+      error: 'Weather service authentication failed'
+    })
+  } else if (axiosErr.response?.status === 404) {
+    logger.warn(`${context} data not found for coordinates`)
+    res.status(404).json({
+      success: false,
+      error: `${context} data not available for this location`
+    })
+  } else {
+    logger.error(`Error fetching ${context} data:`, error)
+    res.status(500).json({
+      success: false,
+      error: `Failed to fetch ${context} data`
+    })
+  }
+}
+
+// Validate external API response using optional chaining
 const validateWeatherResponse = (data: any): boolean => {
   return (
-    data &&
-    data.main &&
-    typeof data.main.temp === 'number' &&
-    data.weather &&
-    Array.isArray(data.weather) &&
+    typeof data?.main?.temp === 'number' &&
+    Array.isArray(data?.weather) &&
     data.weather.length > 0 &&
-    data.weather[0].description &&
-    data.weather[0].icon &&
-    data.wind &&
-    typeof data.wind.speed === 'number'
+    !!data?.weather?.[0]?.description &&
+    !!data?.weather?.[0]?.icon &&
+    typeof data?.wind?.speed === 'number'
   )
+}
+
+// Helper to fetch and build weather data
+const fetchWeatherData = async (lat: number, lon: number, apiKey: string): Promise<WeatherData> => {
+  const weatherResponse = await axios.get('https://api.openweathermap.org/data/2.5/weather', {
+    params: { lat, lon, appid: apiKey, units: 'metric' },
+    timeout: 10000
+  })
+
+  if (!validateWeatherResponse(weatherResponse.data)) {
+    throw new Error('Invalid weather API response structure')
+  }
+
+  const data = weatherResponse.data
+
+  return {
+    temperature: Math.round(data.main.temp),
+    description: data.weather[0].description,
+    humidity: data.main.humidity,
+    windSpeed: data.wind.speed,
+    icon: data.weather[0].icon,
+    feelsLike: Math.round(data.main.feels_like),
+    pressure: data.main.pressure,
+    visibility: data.visibility / 1000,
+    uvIndex: 0
+  }
 }
 
 // Get current weather for coordinates (root route for backward compatibility)
 router.get('/', async (req: Request, res: Response) => {
   try {
-    // Validate input parameters
     const { error, value } = weatherQuerySchema.validate(req.query)
     if (error) {
       logger.warn('Weather API validation failed:', error.details[0].message)
@@ -63,15 +124,11 @@ router.get('/', async (req: Request, res: Response) => {
     }
 
     const { lat, lon } = value
-
     const cacheKey = `weather:current:${lat}:${lon}`
     const cachedWeather = await cache.get(cacheKey)
 
     if (cachedWeather) {
-      return res.json({
-        success: true,
-        data: JSON.parse(cachedWeather)
-      })
+      return res.json({ success: true, data: JSON.parse(cachedWeather) })
     }
 
     const apiKey = process.env.OPENWEATHER_API_KEY
@@ -83,84 +140,18 @@ router.get('/', async (req: Request, res: Response) => {
       })
     }
 
-    const weatherResponse = await axios.get(
-      `https://api.openweathermap.org/data/2.5/weather`,
-      {
-        params: {
-          lat,
-          lon,
-          appid: apiKey,
-          units: 'metric'
-        },
-        timeout: 10000 // 10 second timeout
-      }
-    )
-
-    // Validate external API response
-    if (!validateWeatherResponse(weatherResponse.data)) {
-      logger.error('Invalid weather API response structure')
-      return res.status(502).json({
-        success: false,
-        error: 'Weather service returned invalid data'
-      })
-    }
-
-    const weatherData: WeatherData = {
-      temperature: Math.round(weatherResponse.data.main.temp),
-      description: weatherResponse.data.weather[0].description,
-      humidity: weatherResponse.data.main.humidity,
-      windSpeed: weatherResponse.data.wind.speed,
-      icon: weatherResponse.data.weather[0].icon,
-      feelsLike: Math.round(weatherResponse.data.main.feels_like),
-      pressure: weatherResponse.data.main.pressure,
-      visibility: weatherResponse.data.visibility / 1000, // Convert to km
-      uvIndex: 0 // Would need separate UV API call
-    }
-
-    // Cache for 10 minutes
+    const weatherData = await fetchWeatherData(lat, lon, apiKey)
     await cache.set(cacheKey, JSON.stringify(weatherData), 600)
 
-    res.json({
-      success: true,
-      data: weatherData
-    })
+    res.json({ success: true, data: weatherData })
   } catch (error) {
-    if (axios.isAxiosError(error)) {
-      if (error.code === 'ECONNABORTED') {
-        logger.error('Weather API request timeout')
-        return res.status(504).json({
-          success: false,
-          error: 'Weather service timeout'
-        })
-      }
-      if (error.response?.status === 401) {
-        logger.error('Invalid OpenWeather API key')
-        return res.status(500).json({
-          success: false,
-          error: 'Weather service authentication failed'
-        })
-      }
-      if (error.response?.status === 404) {
-        logger.warn('Weather data not found for coordinates')
-        return res.status(404).json({
-          success: false,
-          error: 'Weather data not available for this location'
-        })
-      }
-    }
-
-    logger.error('Error fetching weather data:', error)
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch weather data'
-    })
+    handleWeatherError(error, res, 'weather')
   }
 })
 
 // Get current weather for coordinates
 router.get('/current', async (req: Request, res: Response) => {
   try {
-    // Validate input parameters
     const { error, value } = weatherQuerySchema.validate(req.query)
     if (error) {
       logger.warn('Weather API validation failed:', error.details[0].message)
@@ -172,15 +163,11 @@ router.get('/current', async (req: Request, res: Response) => {
     }
 
     const { lat, lon } = value
-
     const cacheKey = `weather:current:${lat}:${lon}`
     const cachedWeather = await cache.get(cacheKey)
 
     if (cachedWeather) {
-      return res.json({
-        success: true,
-        data: JSON.parse(cachedWeather)
-      })
+      return res.json({ success: true, data: JSON.parse(cachedWeather) })
     }
 
     const apiKey = process.env.OPENWEATHER_API_KEY
@@ -192,84 +179,45 @@ router.get('/current', async (req: Request, res: Response) => {
       })
     }
 
-    const weatherResponse = await axios.get(
-      `https://api.openweathermap.org/data/2.5/weather`,
-      {
-        params: {
-          lat,
-          lon,
-          appid: apiKey,
-          units: 'metric'
-        },
-        timeout: 10000 // 10 second timeout
-      }
-    )
-
-    // Validate external API response
-    if (!validateWeatherResponse(weatherResponse.data)) {
-      logger.error('Invalid weather API response structure')
-      return res.status(502).json({
-        success: false,
-        error: 'Weather service returned invalid data'
-      })
-    }
-
-    const weatherData: WeatherData = {
-      temperature: Math.round(weatherResponse.data.main.temp),
-      description: weatherResponse.data.weather[0].description,
-      humidity: weatherResponse.data.main.humidity,
-      windSpeed: weatherResponse.data.wind.speed,
-      icon: weatherResponse.data.weather[0].icon,
-      feelsLike: Math.round(weatherResponse.data.main.feels_like),
-      pressure: weatherResponse.data.main.pressure,
-      visibility: weatherResponse.data.visibility / 1000, // Convert to km
-      uvIndex: 0 // Would need separate UV API call
-    }
-
-    // Cache for 10 minutes
+    const weatherData = await fetchWeatherData(lat, lon, apiKey)
     await cache.set(cacheKey, JSON.stringify(weatherData), 600)
 
-    res.json({
-      success: true,
-      data: weatherData
-    })
+    res.json({ success: true, data: weatherData })
   } catch (error) {
-    if (axios.isAxiosError(error)) {
-      if (error.code === 'ECONNABORTED') {
-        logger.error('Weather API request timeout')
-        return res.status(504).json({
-          success: false,
-          error: 'Weather service timeout'
-        })
-      }
-      if (error.response?.status === 401) {
-        logger.error('Invalid OpenWeather API key')
-        return res.status(500).json({
-          success: false,
-          error: 'Weather service authentication failed'
-        })
-      }
-      if (error.response?.status === 404) {
-        logger.warn('Weather data not found for coordinates')
-        return res.status(404).json({
-          success: false,
-          error: 'Weather data not available for this location'
-        })
-      }
-    }
-
-    logger.error('Error fetching weather data:', error)
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch weather data'
-    })
+    handleWeatherError(error, res, 'weather')
   }
 })
+
+// Helper to fetch forecast data
+const fetchForecastData = async (lat: number, lon: number, apiKey: string) => {
+  const forecastResponse = await axios.get('https://api.openweathermap.org/data/2.5/forecast', {
+    params: { lat, lon, appid: apiKey, units: 'metric' },
+    timeout: 10000
+  })
+
+  if (!forecastResponse.data?.list || !Array.isArray(forecastResponse.data.list)) {
+    throw new Error('Invalid forecast API response structure')
+  }
+
+  return forecastResponse.data.list.slice(0, 5).map((item: any) => {
+    if (!item?.main?.temp || !item?.weather?.[0]?.description) {
+      throw new Error('Invalid forecast item structure')
+    }
+
+    return {
+      time: item.dt_txt,
+      temperature: Math.round(item.main.temp),
+      description: item.weather[0].description,
+      icon: item.weather[0].icon,
+      humidity: item.main.humidity,
+      windSpeed: item.wind.speed
+    }
+  })
+}
 
 // Get weather forecast for coordinates
 router.get('/forecast', async (req: Request, res: Response) => {
   try {
-    // Validate input parameters
     const { error, value } = weatherQuerySchema.validate(req.query)
     if (error) {
       logger.warn('Weather forecast API validation failed:', error.details[0].message)
@@ -281,15 +229,11 @@ router.get('/forecast', async (req: Request, res: Response) => {
     }
 
     const { lat, lon } = value
-
     const cacheKey = `weather:forecast:${lat}:${lon}`
     const cachedForecast = await cache.get(cacheKey)
 
     if (cachedForecast) {
-      return res.json({
-        success: true,
-        data: JSON.parse(cachedForecast)
-      })
+      return res.json({ success: true, data: JSON.parse(cachedForecast) })
     }
 
     const apiKey = process.env.OPENWEATHER_API_KEY
@@ -301,80 +245,12 @@ router.get('/forecast', async (req: Request, res: Response) => {
       })
     }
 
-    const forecastResponse = await axios.get(
-      `https://api.openweathermap.org/data/2.5/forecast`,
-      {
-        params: {
-          lat,
-          lon,
-          appid: apiKey,
-          units: 'metric'
-        },
-        timeout: 10000 // 10 second timeout
-      }
-    )
-
-    // Validate forecast response
-    if (!forecastResponse.data?.list || !Array.isArray(forecastResponse.data.list)) {
-      logger.error('Invalid forecast API response structure')
-      return res.status(502).json({
-        success: false,
-        error: 'Weather forecast service returned invalid data'
-      })
-    }
-
-    const forecastData = forecastResponse.data.list.slice(0, 5).map((item: any) => {
-      if (!item?.main?.temp || !item?.weather?.[0]?.description) {
-        throw new Error('Invalid forecast item structure')
-      }
-
-      return {
-        time: item.dt_txt,
-        temperature: Math.round(item.main.temp),
-        description: item.weather[0].description,
-        icon: item.weather[0].icon,
-        humidity: item.main.humidity,
-        windSpeed: item.wind.speed
-      }
-    })
-
-    // Cache for 30 minutes
+    const forecastData = await fetchForecastData(lat, lon, apiKey)
     await cache.set(cacheKey, JSON.stringify(forecastData), 1800)
 
-    res.json({
-      success: true,
-      data: forecastData
-    })
+    res.json({ success: true, data: forecastData })
   } catch (error) {
-    if (axios.isAxiosError(error)) {
-      if (error.code === 'ECONNABORTED') {
-        logger.error('Weather forecast API request timeout')
-        return res.status(504).json({
-          success: false,
-          error: 'Weather forecast service timeout'
-        })
-      }
-      if (error.response?.status === 401) {
-        logger.error('Invalid OpenWeather API key')
-        return res.status(500).json({
-          success: false,
-          error: 'Weather service authentication failed'
-        })
-      }
-      if (error.response?.status === 404) {
-        logger.warn('Weather forecast data not found for coordinates')
-        return res.status(404).json({
-          success: false,
-          error: 'Weather forecast data not available for this location'
-        })
-      }
-    }
-
-    logger.error('Error fetching weather forecast:', error)
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch weather forecast'
-    })
+    handleWeatherError(error, res, 'forecast')
   }
 })
 

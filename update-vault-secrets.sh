@@ -95,6 +95,6 @@ echo ""
 echo "🔐 Your secrets are now secure and ready for use!"
 
 # Cleanup - kill port forwarding if we started it
-if [ ! -z "$PF_PID" ]; then
+if [[ ! -z "$PF_PID" ]]; then
     kill $PF_PID 2>/dev/null || true
 fi
