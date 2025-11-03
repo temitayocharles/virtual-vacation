@@ -12,10 +12,20 @@ on:
       - 'backend/package*.json'
       - 'frontend/Dockerfile.base'
       - 'backend/Dockerfile.base'
+      - '.github/workflows/build-base-images.yml'
   pull_request:
     branches:
       - main
+    paths-ignore:
+      - 'frontend/package*.json'
+      - 'backend/package*.json'
+      - 'frontend/Dockerfile.base'
+      - 'backend/Dockerfile.base'
   workflow_dispatch:
+  workflow_run:
+    workflows: ["Build Base Images"]
+    types:
+      - completed
 
 env:
   REGISTRY_GHCR: ghcr.io
@@ -60,6 +70,20 @@ jobs:
             echo "⚠️ No specific base tag found, using 'latest'"
           fi
 
+      - name: Check base image availability
+        id: check-base
+        run: |
+          BASE_IMAGE="temitayocharles/virtual-vacation-${{ matrix.service }}-base:${{ steps.base-tags.outputs.base_tag }}"
+          echo "Checking if base image exists: ${BASE_IMAGE}"
+          
+          if docker manifest inspect ${BASE_IMAGE} > /dev/null 2>&1; then
+            echo "use_base=true" >> $GITHUB_OUTPUT
+            echo "✅ Base image found: ${BASE_IMAGE}"
+          else
+            echo "use_base=false" >> $GITHUB_OUTPUT
+            echo "❌ Base image not found, will use fallback build"
+          fi
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -99,7 +123,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ${{ matrix.context }}
-          file: ${{ matrix.dockerfile }}
+          file: ${{ steps.check-base.outputs.use_base == 'true' && matrix.dockerfile || format('{0}.fallback', matrix.dockerfile) }}
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
@@ -108,6 +132,16 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: |
             BASE_IMAGE_TAG=${{ steps.base-tags.outputs.base_tag }}
+
+      - name: Build Strategy Summary
+        run: |
+          if [ "${{ steps.check-base.outputs.use_base }}" == "true" ]; then
+            echo "🚀 Used FAST build strategy with base image: temitayocharles/virtual-vacation-${{ matrix.service }}-base:${{ steps.base-tags.outputs.base_tag }}"
+            echo "⚡ Build completed using pre-built dependencies"
+          else
+            echo "🐌 Used FALLBACK build strategy (full build from scratch)"
+            echo "📝 Base image will be available for next builds"
+          fi
 
       - name: Image digest (Backend)
         if: matrix.service == 'backend'
