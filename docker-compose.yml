@@ -43,17 +43,19 @@ services:
 
   # Backend API
   backend:
-    image: virtual-vacation-backend:latest
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: virtual-vacation-backend
     env_file:
       - .env
     environment:
       NODE_ENV: development
-      PORT: 5000
+      PORT: 8080
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
       REDIS_URL: redis://redis:6379/${REDIS_DB}
     ports:
-      - "5000:5000"
+      - "8080:8080"
     depends_on:
       postgres:
         condition: service_healthy
@@ -65,14 +67,16 @@ services:
 
   # Frontend
   frontend:
-    image: virtual-vacation-frontend:latest
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.production
     container_name: virtual-vacation-frontend
     env_file:
       - .env
     environment:
-      VITE_API_BASE_URL: http://localhost:5000
+      VITE_API_BASE_URL: http://backend:8080
     ports:
-      - "3000:80"
+      - "3001:80"
     depends_on:
       - backend
     networks:
@@ -160,7 +164,7 @@ services:
       GF_SECURITY_ADMIN_PASSWORD: admin
       GF_USERS_ALLOW_SIGN_UP: "false"
     ports:
-      - "3001:3000"
+      - "3002:3000"
     volumes:
       - grafana_data:/var/lib/grafana
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning

@@ -64,39 +64,39 @@ const Navigation: React.FC = () => {
       <motion.nav 
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
           isScrolled 
-            ? 'glass-card m-4 rounded-2xl shadow-2xl' 
-            : 'glass-card m-4 rounded-xl shadow-lg'
+            ? 'app-header m-4 rounded-2xl shadow-2xl' 
+            : 'app-header m-4 rounded-xl shadow-lg'
         }`}
         initial={{ y: -100 }}
         animate={{ y: 0 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
       >
-        <div className="px-6 py-4">
+        <div className="header-content">
           <div className="flex items-center justify-between">
             {/* Logo */}
-            <Link to="/" className="flex items-center space-x-3 group">
+            <Link to="/" className="app-logo group">
               <motion.div
                 whileHover={{ rotate: 360, scale: 1.1 }}
                 transition={{ duration: 0.6 }}
                 className="relative"
               >
-                <div className="p-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl text-white shadow-lg">
+                <div className="logo-icon">
                   <Globe size={28} />
                 </div>
                 <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse" />
               </motion.div>
               <div className="hidden sm:block">
-                <span className="text-2xl font-bold text-gradient">
+                <span className="logo-title">
                   Virtual Vacation
                 </span>
-                <div className="text-xs text-gray-500 font-medium">
+                <div className="logo-subtitle">
                   Ultra-Immersive Travel
                 </div>
               </div>
             </Link>
 
             {/* Desktop Navigation */}
-            <div className="hidden lg:flex items-center space-x-2">
+            <div className="hidden lg:flex items-center app-navigation">
               {navItems.map((item) => {
                 const Icon = item.icon
                 return (
@@ -107,22 +107,16 @@ const Navigation: React.FC = () => {
                   >
                     <Link
                       to={item.path}
-                      className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl font-medium transition-all duration-200 relative ${
-                        isActive(item.path)
-                          ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
-                          : item.highlight
-                          ? 'bg-gradient-to-r from-yellow-400 to-orange-500 text-black hover:from-yellow-500 hover:to-orange-600 shadow-md'
-                          : 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'
-                      }`}
+                      className={`nav-item ${isActive(item.path) ? 'active' : ''}`}
                     >
-                      <Icon size={18} />
-                      <span>{item.label}</span>
+                      <Icon className="nav-icon" size={18} />
+                      <span className="nav-label">{item.label}</span>
                       {item.highlight && (
                         <Zap size={14} className="text-current" />
                       )}
                       {isActive(item.path) && (
                         <motion.div
-                          className="absolute -bottom-1 left-1/2 w-1 h-1 bg-white rounded-full"
+                          className="nav-indicator"
                           layoutId="activeIndicator"
                           initial={false}
                           style={{ x: '-50%' }}
@@ -287,16 +281,10 @@ const Navigation: React.FC = () => {
                         <Link
                           to={item.path}
                           onClick={() => setIsOpen(false)}
-                          className={`flex items-center space-x-3 px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
-                            isActive(item.path)
-                              ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
-                              : item.highlight
-                              ? 'bg-gradient-to-r from-yellow-400 to-orange-500 text-black'
-                              : 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'
-                          }`}
+                          className={`nav-item ${isActive(item.path) ? 'active' : ''}`}
                         >
-                          <Icon size={20} />
-                          <span>{item.label}</span>
+                          <Icon className="nav-icon" size={20} />
+                          <span className="nav-label">{item.label}</span>
                           {item.highlight && (
                             <div className="ml-auto flex items-center">
                               <Zap size={16} />

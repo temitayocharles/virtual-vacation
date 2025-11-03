@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: virtual-vacation
+  labels:
+    name: virtual-vacation
+    environment: production
+
+---
+# ServiceAccount for Vault integration
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: virtual-vacation-sa
+  namespace: virtual-vacation
+  labels:
+    app: virtual-vacation
+
+---
+# ConfigMap for non-sensitive configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: virtual-vacation-config
+  namespace: virtual-vacation
+  labels:
+    app: virtual-vacation
+data:
+  # Application Settings
+  NODE_ENV: "production"
+  VITE_APP_ENV: "production"
+  
+  # Server Configuration
+  PORT: "5000"
+  
+  # Database Configuration (non-sensitive)
+  POSTGRES_DB: "virtual_vacation"
+  POSTGRES_USER: "vacation_user"
+  POSTGRES_HOST: "postgres-service"
+  POSTGRES_PORT: "5432"
+  
+  # Redis Configuration
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
+  REDIS_DB: "0"
+  
+  # Performance Settings
+  RATE_LIMIT_WINDOW_MS: "900000"
+  RATE_LIMIT_MAX_REQUESTS: "100"
+  LOG_LEVEL: "info"
+  
+  # CORS Configuration
+  CORS_ORIGIN: "http://localhost:3000"
+  FRONTEND_URL: "http://localhost:3000"

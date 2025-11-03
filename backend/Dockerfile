@@ -1,16 +1,22 @@
 # =============================================================================
-# VIRTUAL VACATION BACKEND - FAST APPLICATION BUILD
+# VIRTUAL VACATION BACKEND - BUILD & RUNTIME
 # =============================================================================
-# Uses pre-built base image with dependencies for faster builds
 
-# Use our pre-built base image with all dependencies
-ARG BASE_IMAGE_TAG=latest
-FROM temitayocharles/virtual-vacation-backend-base:${BASE_IMAGE_TAG} AS builder
+# Build stage
+FROM node:18-alpine AS builder
 
-# Copy source code (only this layer changes on code updates)
-COPY --chown=nodeuser:nodejs . .
+WORKDIR /app
 
-# Build the application (dependencies already installed in base image)
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci
+
+# Copy source code
+COPY . .
+
+# Build the application
 RUN npm run build
 
 # Production stage - Final image
@@ -18,9 +24,10 @@ FROM node:18-alpine AS runtime
 
 WORKDIR /app
 
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs \
-    && adduser -S nodeuser -u 1001
+# Create non-root user and install curl for health checks
+RUN apk add --no-cache curl && \
+    addgroup -g 1001 -S nodejs && \
+    adduser -S nodeuser -u 1001
 
 # Copy built application and production dependencies from builder
 COPY --from=builder --chown=nodeuser:nodejs /app/dist ./dist
@@ -34,11 +41,11 @@ COPY --chown=nodeuser:nodejs healthcheck.js ./
 USER nodeuser
 
 # Expose port
-EXPOSE 5000
+EXPOSE 8080
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node healthcheck.js
+HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
+  CMD curl -f http://localhost:8080/health || exit 1
 
 # Start the application
 CMD ["npm", "start"]

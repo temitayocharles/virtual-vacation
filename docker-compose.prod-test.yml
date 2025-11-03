@@ -1,0 +1,130 @@
+# =============================================================================
+# PRODUCTION LOCAL TESTING - DOCKER COMPOSE
+# =============================================================================
+# This tests the exact same images that will be deployed to production
+
+version: '3.8'
+
+services:
+  # Database - PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: vv-postgres-prod
+    environment:
+      POSTGRES_DB: virtual_vacation
+      POSTGRES_USER: vacation_user
+      POSTGRES_PASSWORD: vzWcioNW7UMxjxUDLA6bmtOvxXoOAdlm
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/src/config/init-test-db.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vacation_user -d virtual_vacation"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Cache - Redis
+  redis:
+    image: redis:7-alpine
+    container_name: vv-redis-prod
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API - Production Image
+  backend:
+    image: temitayocharles/virtual-vacation-backend:latest
+    container_name: vv-backend-prod
+    ports:
+      - "5000:5000"
+    environment:
+      # Database Configuration
+      DATABASE_URL: postgresql://vacation_user:vzWcioNW7UMxjxUDLA6bmtOvxXoOAdlm@postgres:5432/virtual_vacation
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: virtual_vacation
+      POSTGRES_USER: vacation_user
+      POSTGRES_PASSWORD: vzWcioNW7UMxjxUDLA6bmtOvxXoOAdlm
+
+      # Redis Configuration
+      REDIS_URL: redis://redis:6379
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+
+      # Server Configuration
+      NODE_ENV: production
+      PORT: 5000
+      
+      # API Keys (These need to be configured)
+      GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY:-CONFIGURE_YOUR_API_KEY_HERE}
+      OPENWEATHER_API_KEY: ${OPENWEATHER_API_KEY:-CONFIGURE_YOUR_API_KEY_HERE}
+      UNSPLASH_ACCESS_KEY: ${UNSPLASH_ACCESS_KEY:-CONFIGURE_YOUR_API_KEY_HERE}
+      FREESOUND_API_KEY: ${FREESOUND_API_KEY:-CONFIGURE_YOUR_API_KEY_HERE}
+      SKETCHFAB_API_KEY: ${SKETCHFAB_API_KEY:-CONFIGURE_YOUR_API_KEY_HERE}
+      
+      # Optional APIs
+      NEWS_API_KEY: ${NEWS_API_KEY:-}
+      MAPBOX_ACCESS_TOKEN: ${MAPBOX_ACCESS_TOKEN:-}
+      GA_TRACKING_ID: ${GA_TRACKING_ID:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+
+      # Security
+      JWT_SECRET: 7a43a0817c964b8a5b0df50034d0254501d43ea82b99f120ddfb57f93ed340a9
+      SESSION_SECRET: dc4be4e3c97035cdeb17e81940cff65aa0513f38f6d8ccdb578033354b793318
+      ENCRYPTION_KEY: ca0e16ac9922ff4d0f96fb50f8e05fb0
+      API_ENCRYPTION_KEY: aeadd7836a16f51c0552512a24aeea2a
+
+      # CORS & Security
+      CORS_ORIGIN: http://localhost:3000
+      FRONTEND_URL: http://localhost:3000
+
+      # Performance
+      RATE_LIMIT_WINDOW_MS: 900000
+      RATE_LIMIT_MAX_REQUESTS: 100
+      LOG_LEVEL: info
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend - Production Image
+  frontend:
+    image: temitayocharles/virtual-vacation-frontend:latest
+    container_name: vv-frontend-prod
+    ports:
+      - "3000:80"
+    environment:
+      # These are baked into the image at build time, but can be overridden
+      VITE_API_BASE_URL: http://localhost:5000
+      VITE_WS_URL: ws://localhost:5000
+      VITE_FRONTEND_URL: http://localhost:3000
+      VITE_APP_ENV: production
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-nv", "-t1", "--spider", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data:
+
+networks:
+  default:
+    name: virtual-vacation-prod

@@ -16,10 +16,10 @@ echo ""
 
 # Wait for Vault pod to be ready
 echo "⏳ Waiting for Vault pod to be ready..."
-kubectl wait --for=condition=ready pod -l app=vault -n $NAMESPACE --timeout=300s 2>/dev/null || true
+kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=vault -n $NAMESPACE --timeout=300s 2>/dev/null || true
 
 # Get Vault pod name
-VAULT_POD=$(kubectl get pods -n $NAMESPACE -l app=vault -o jsonpath='{.items[0].metadata.name}')
+VAULT_POD=$(kubectl get pods -n $NAMESPACE -l app.kubernetes.io/name=vault -o jsonpath='{.items[0].metadata.name}')
 
 if [ -z "$VAULT_POD" ]; then
     echo "❌ Vault pod not found. Deploy Vault first:"
@@ -45,6 +45,7 @@ STATUS=$(curl -s $VAULT_ADDR/v1/sys/init | grep -o '"initialized":[^,}]*' || ech
 
 if [[ $STATUS == *"true"* ]]; then
     echo "✓ Vault is already initialized"
+    echo "⚠️  Note: If Vault is sealed, you'll need the unseal key"
 else
     echo "🔧 Initializing Vault..."
     INIT_OUTPUT=$(curl -s -X POST \
@@ -69,8 +70,6 @@ else
     
     echo "✓ Vault unsealed"
     echo ""
-else
-    echo "✓ Vault is already unsealed"
 fi
 
 # Prompt for root token

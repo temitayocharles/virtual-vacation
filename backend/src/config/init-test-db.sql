@@ -1,8 +1,18 @@
 -- Test Database Initialization Script
 -- This script creates the necessary tables and indexes for testing
 
--- Create the virtual_vacation_test database if it doesn't exist
--- (This is handled by POSTGRES_DB environment variable)
+-- Create the vacation_user if it doesn't exist
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_user WHERE usename = 'vacation_user') THEN
+    CREATE USER vacation_user WITH PASSWORD 'secure_vacation_password_2024';
+    ALTER USER vacation_user CREATEDB;
+  END IF;
+END $$;
+
+-- Grant privileges to vacation_user on the virtual_vacation database
+-- (Run this after the database is created)
+GRANT CONNECT ON DATABASE virtual_vacation TO vacation_user;
+GRANT CREATE ON DATABASE virtual_vacation TO vacation_user;
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";

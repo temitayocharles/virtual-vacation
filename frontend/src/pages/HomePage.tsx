@@ -97,48 +97,29 @@ const HomePage: React.FC = () => {
   ]
 
   return (
-    <div className="min-h-screen overflow-hidden">
+    <div className="app">
       {/* Hero Section with Parallax */}
-      <section className="relative h-screen flex items-center justify-center overflow-hidden">
+      <section className="hero-section">
         {/* Animated Background */}
-        <motion.div 
-          className="absolute inset-0 bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-800"
-          style={{ y: yRange }}
-        />
-        
-        {/* Floating Elements */}
-        <div className="absolute inset-0 overflow-hidden">
-          {[...Array(20)].map((_, i) => (
-            <motion.div
-              key={i}
-              className="absolute w-2 h-2 bg-white/20 rounded-full"
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-              }}
-              animate={{
-                y: [0, -30, 0],
-                opacity: [0.2, 0.8, 0.2],
-              }}
-              transition={{
-                duration: 3 + Math.random() * 4,
-                repeat: Infinity,
-                delay: Math.random() * 2,
-              }}
-            />
-          ))}
+        <div className="app-background">
+          <div className="bg-gradient"></div>
+          <div className="bg-particles"></div>
+          <div className="floating-element floating-1"></div>
+          <div className="floating-element floating-2"></div>
+          <div className="floating-element floating-3"></div>
         </div>
         
-        <div className="relative z-10 text-center text-white px-6 max-w-6xl">
+        <div className="hero-content">
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 1, ease: "easeOut" }}
           >
-            <h1 className="text-6xl md:text-8xl font-bold mb-6">
-              <span className="block">Explore the</span>
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500">
+            <h1 className="hero-title">
+              <span className="hero-title-line">Explore the</span>
+              <span className="hero-title-highlight">
                 Impossible
+                <span className="hero-sparkle">✨</span>
               </span>
             </h1>
           </motion.div>
@@ -147,7 +128,7 @@ const HomePage: React.FC = () => {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.3 }}
-            className="text-xl md:text-3xl mb-8 text-gray-200 max-w-4xl mx-auto leading-relaxed"
+            className="hero-description"
           >
             Experience ultra-immersive virtual travel that surpasses Google Earth. 
             Discover every corner of our planet with unprecedented realism.
@@ -157,13 +138,13 @@ const HomePage: React.FC = () => {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.6 }}
-            className="flex flex-col sm:flex-row gap-6 justify-center items-center"
+            className="hero-actions"
           >
             <InteractiveButton
               variant="primary"
               size="lg"
               icon={Sparkles}
-              className="bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-black font-bold text-xl px-10 py-4"
+              className="cta-button primary"
               onClick={() => window.location.href = '/world-explorer'}
             >
               Launch World Explorer
@@ -173,7 +154,7 @@ const HomePage: React.FC = () => {
               variant="ghost"
               size="lg"
               icon={Play}
-              className="text-white border-2 border-white/30 hover:bg-white/10 text-xl px-10 py-4"
+              className="cta-button secondary"
               onClick={() => setIsVideoPlaying(!isVideoPlaying)}
             >
               {isVideoPlaying ? 'Pause' : 'Watch Demo'}
@@ -185,7 +166,7 @@ const HomePage: React.FC = () => {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.9 }}
-            className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-6"
+            className="hero-stats"
           >
             {achievements.map((achievement, index) => {
               const Icon = achievement.icon
@@ -193,10 +174,10 @@ const HomePage: React.FC = () => {
                 <motion.div
                   key={achievement.label}
                   whileHover={{ scale: 1.05 }}
-                  className="glass-card p-6 text-center bg-white/10 backdrop-blur-md"
+                  className="stat-item"
                 >
                   <Icon className="mx-auto mb-3 text-yellow-400" size={32} />
-                  <div className="text-2xl font-bold mb-1">{achievement.label}</div>
+                  <div className="stat-number">{achievement.label}</div>
                   <div className="text-sm text-gray-300">{achievement.description}</div>
                 </motion.div>
               )
