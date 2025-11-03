@@ -111,7 +111,7 @@ jobs:
 
       - name: Upload coverage reports as artifacts
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: sonarqube-reports-${{ matrix.service }}-${{ github.run_number }}
           path: sonarqube-reports/
@@ -119,7 +119,7 @@ jobs:
 
       - name: Upload coverage to codecov
         if: always()
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           files: ./${{ matrix.service }}/coverage/lcov.info,./${{ matrix.service }}/coverage.xml
           flags: ${{ matrix.service }}
@@ -256,7 +256,7 @@ jobs:
           cat comprehensive-sonarqube-report.md
 
       - name: Upload comprehensive report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: comprehensive-sonarqube-report
           path: comprehensive-sonarqube-report.md
