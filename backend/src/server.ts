@@ -148,7 +148,13 @@ app.get('/health', async (req, res) => {
   // Check memory usage
   const memUsage = process.memoryUsage()
   const memUsagePercent = (memUsage.heapUsed / memUsage.heapTotal) * 100
-  healthCheck.services.memory = memUsagePercent > 90 ? 'critical' : memUsagePercent > 75 ? 'warning' : 'healthy'
+  if (memUsagePercent > 90) {
+    healthCheck.services.memory = 'critical'
+  } else if (memUsagePercent > 75) {
+    healthCheck.services.memory = 'warning'
+  } else {
+    healthCheck.services.memory = 'healthy'
+  }
 
   // Check disk space (simplified)
   healthCheck.services.disk = 'healthy' // Would need actual disk check in production
@@ -159,7 +165,12 @@ app.get('/health', async (req, res) => {
     healthCheck.status = unhealthyServices.includes('critical') ? 'critical' : 'degraded'
   }
 
-  const statusCode = healthCheck.status === 'healthy' ? 200 : healthCheck.status === 'degraded' ? 207 : 503
+  let statusCode = 200
+  if (healthCheck.status === 'critical') {
+    statusCode = 503
+  } else if (healthCheck.status === 'degraded') {
+    statusCode = 207
+  }
   res.status(statusCode).json(healthCheck)
 })
 

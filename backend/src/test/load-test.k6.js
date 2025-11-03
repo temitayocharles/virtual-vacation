@@ -45,11 +45,11 @@ export default function () {
 }
 
 function testCitiesAPI() {
-    const startTime = new Date().getTime();
+    const startTime = Date.now();
 
     // Test cities listing
     const citiesResponse = http.get(`${BASE_URL}/api/cities?limit=10&page=1`);
-    citiesResponseTime.add(new Date().getTime() - startTime);
+    citiesResponseTime.add(Date.now() - startTime);
 
     check(citiesResponse, {
         'cities status is 200': (r) => r.status === 200,
@@ -73,11 +73,11 @@ function testCitiesAPI() {
 }
 
 function testWeatherAPI() {
-    const startTime = new Date().getTime();
+    const startTime = Date.now();
 
     // Test current weather
     const weatherResponse = http.get(`${BASE_URL}/api/weather/current?lat=40.7128&lon=-74.0060`);
-    weatherResponseTime.add(new Date().getTime() - startTime);
+    weatherResponseTime.add(Date.now() - startTime);
 
     check(weatherResponse, {
         'weather status is 200': (r) => r.status === 200,
@@ -94,11 +94,11 @@ function testWeatherAPI() {
 }
 
 function testStreetViewAPI() {
-    const startTime = new Date().getTime();
+    const startTime = Date.now();
 
     // Test street view availability
     const streetviewResponse = http.get(`${BASE_URL}/api/streetview/check?lat=40.7128&lon=-74.0060`);
-    streetviewResponseTime.add(new Date().getTime() - startTime);
+    streetviewResponseTime.add(Date.now() - startTime);
 
     check(streetviewResponse, {
         'streetview status is 200': (r) => r.status === 200,

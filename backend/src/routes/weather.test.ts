@@ -23,7 +23,7 @@ jest.mock('../utils/logger', () => ({
 
 // Mock axios
 jest.mock('axios')
-import axios, { AxiosError, isAxiosError } from 'axios'
+import axios, { AxiosError } from 'axios'
 
 const mockedAxios = axios as jest.Mocked<typeof axios>
 

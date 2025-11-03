@@ -105,7 +105,7 @@ router.get('/', async (req: Request, res: Response) => {
       type: 'city'
     }))
 
-    const total = parseInt(countResult.rows[0].total)
+    const total = Number.parseInt(countResult.rows[0].total, 10)
     const totalPages = Math.ceil(total / limit)
     const page = Math.floor(offset / limit) + 1
 

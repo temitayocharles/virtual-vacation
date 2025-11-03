@@ -382,37 +382,44 @@ async function main() {
     const command = process.argv[2];
 
     switch (command) {
-        case 'load':
+        case 'load': {
             const scenario = process.argv[3] || 'cities';
-            const duration = parseInt(process.argv[4]) || 60;
-            const users = parseInt(process.argv[5]) || 10;
+            const duration = Number.parseInt(process.argv[4], 10) || 60;
+            const users = Number.parseInt(process.argv[5], 10) || 10;
             await tester.runLoadTest(scenario, duration, users);
             break;
+        }
 
-        case 'stress':
+        case 'stress': {
             await tester.runStressTest();
             break;
+        }
 
-        case 'spike':
+        case 'spike': {
             await tester.runSpikeTest();
             break;
+        }
 
-        case 'endurance':
+        case 'endurance': {
             await tester.runEnduranceTest();
             break;
+        }
 
-        case 'memory':
+        case 'memory': {
             await tester.runMemoryLeakTest();
             break;
+        }
 
-        case 'report':
+        case 'report': {
             await tester.generateReport();
             break;
+        }
 
         case 'full':
-        default:
+        default: {
             await tester.runFullTestSuite();
             break;
+        }
     }
 }
 

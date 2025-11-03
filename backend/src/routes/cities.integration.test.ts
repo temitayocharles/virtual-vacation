@@ -5,8 +5,7 @@ import {
     teardownTestDB,
     setupTestRedis,
     teardownTestRedis,
-    clearTestData,
-    getTestPool
+    clearTestData
 } from '../test/integration-setup'
 import { getDB } from '../config/database'
 

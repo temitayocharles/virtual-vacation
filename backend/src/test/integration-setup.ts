@@ -6,7 +6,7 @@ import { logger } from '../utils/logger'
 // Test database configuration
 const testDBConfig = {
     host: process.env.TEST_DB_HOST || 'localhost',
-    port: parseInt(process.env.TEST_DB_PORT || '5432'),
+    port: Number.parseInt(process.env.TEST_DB_PORT || '5432', 10),
     database: process.env.TEST_DB_NAME || 'virtual_vacation_test',
     user: process.env.TEST_DB_USER || 'postgres',
     password: process.env.TEST_DB_PASSWORD || 'password',
