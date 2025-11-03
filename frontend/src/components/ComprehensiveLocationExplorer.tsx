@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   MapPin, Camera, Users, Clock, Thermometer, Wind, Droplets,
-  Building, School, Cross, ShoppingBag, Coffee, Music, TreePine,
+  Building, School, Heart, ShoppingBag, Coffee, Music, TreePine,
   Mountain, Waves, Car, Bus, Plane, Train, Bike, Ship, Home,
   Church, Star, Utensils, Bed, BookOpen, GraduationCap,
   Briefcase, Activity, Zap, Wifi, Signal, Radio, Tv, Gamepad2,
   Trophy, Medal, Film, Palette, Camera as PhotoIcon,
-  CalendarDays, Bell, Heart, Shield, AlertTriangle, Navigation,
+  CalendarDays, Bell, Heart as HeartIcon, Shield, AlertTriangle, Navigation,
   Compass, Map, Satellite, Eye, Sun, Moon, Cloud, CloudRain,
   Snowflake, Sunrise, Sunset, Rainbow, Leaf, Flower, Bird, Fish,
   Factory, Recycle, Battery, Lightbulb, Fuel, ShoppingCart
@@ -15,44 +15,75 @@ import {
 
 // Type definitions for comprehensive location data
 interface TransportSystem {
-  buses: number;
   metro_lines: number;
+  metro_stations: number;
+  bus_routes: number;
+  bike_sharing_stations: number;
+  airports: number;
   train_stations: number;
-  bike_stations: number;
-  taxi_availability: string;
-  traffic_flow: string;
+  river_transport: boolean;
+  daily_metro_passengers: number;
+  bike_sharing_bikes: number;
+  taxi_companies: number;
+  ride_sharing_vehicles: number;
 }
 
 interface EducationSystem {
   primary_schools: number;
   secondary_schools: number;
   universities: number;
+  grandes_ecoles?: number;
+  vocational_schools?: number;
   libraries: number;
+  research_institutes?: number;
   student_population: number;
+  international_schools?: number;
+  language_schools?: number;
 }
 
 interface HealthcareSystem {
   hospitals: number;
   clinics: number;
   pharmacies: number;
-  emergency_rooms: number;
-  bed_capacity: number;
+  dental_practices?: number;
+  specialists?: number;
+  emergency_services?: number;
+  blood_donation_centers?: number;
+  mental_health_centers?: number;
+  rehabilitation_centers?: number;
+  medical_research_facilities?: number;
 }
 
 interface CommercialSystem {
-  shopping_centers: number;
+  shopping_malls?: number;
+  shopping_centers?: number;
+  department_stores?: number;
+  supermarkets?: number;
+  markets: number;
   restaurants: number;
   cafes: number;
-  markets: number;
+  bars?: number;
   banks: number;
+  atms?: number;
+  gas_stations?: number;
+  luxury_boutiques?: number;
+  bookstores?: number;
 }
 
 interface EntertainmentSystem {
   theaters: number;
   cinemas: number;
   museums: number;
+  art_galleries?: number;
+  concert_halls?: number;
+  nightclubs?: number;
   parks: number;
-  sports_facilities: number;
+  gardens?: number;
+  sports_stadiums?: number;
+  sports_centers?: number;
+  sports_facilities?: number;
+  swimming_pools?: number;
+  amusement_parks?: number;
 }
 
 interface ReligiousSystem {
@@ -60,86 +91,134 @@ interface ReligiousSystem {
   mosques: number;
   temples: number;
   synagogues: number;
-  other_places: number;
+  other_religious_sites?: number;
+  other_places?: number;
+  religious_festivals?: number;
+  pilgrimage_sites?: number;
+  religious_schools?: number;
 }
 
 interface AccommodationSystem {
-  hotels: number;
-  hostels: number;
-  apartments: number;
-  average_price: number;
-  occupancy_rate: number;
+  luxury_hotels?: number;
+  mid_range_hotels?: number;
+  budget_hotels?: number;
+  hotels?: number;
+  hostels?: number;
+  apartments?: number;
+  vacation_rentals?: number;
+  bed_and_breakfasts?: number;
+  total_hotel_rooms?: number;
+  average_occupancy?: number;
+  boutique_hotels?: number;
+  average_price?: number;
+  occupancy_rate?: number;
 }
 
 interface NaturalFeatures {
-  rivers: string[];
-  parks: string[];
-  forests: string[];
-  lakes: string[];
-  mountains: string[];
+  rivers?: Array<{ name: string; length_km: number; recreational_activities: string[] }>;
+  parks?: Array<{ name: string; area_hectares: number; facilities: string[] }>;
+  forests?: Array<{ name: string; area_hectares: number; tree_species: string[] }>;
+  lakes?: string[];
+  mountains?: string[];
 }
 
 interface TrafficData {
-  congestion_level: string;
-  average_speed: number;
-  accidents: number;
-  road_closures: number;
+  overall_congestion?: string;
+  congestion_level?: string;
+  average_speed_kmh?: number;
+  average_speed?: number;
+  incidents?: number;
+  accidents?: number;
+  road_closures?: number;
+  construction_zones?: number;
+  parking_availability?: number;
+  fuel_prices?: { gasoline: string; diesel: string };
 }
 
 interface BusinessActivity {
-  market_hours: boolean;
-  commercial_activity: string;
-  restaurant_occupancy: number;
-  retail_sales: number;
+  activity_level?: string;
+  market_hours?: boolean;
+  commercial_activity?: string;
+  restaurant_occupancy?: number;
+  retail_sales?: number;
+  open_businesses_percentage?: number;
+  office_occupancy?: number;
+  retail_foot_traffic?: string;
+  restaurant_bookings?: string;
+  delivery_activity?: string;
 }
 
 interface CrowdLevel {
-  density: string;
-  count: number;
-  trend: string;
+  level?: string;
+  density?: string;
+  estimated_people?: number;
+  count?: number;
+  wait_times?: string;
+  trend?: string;
 }
 
 interface LocationEvent {
   name: string;
   location: string;
-  attendees: number;
-  type: string;
-  start_time: string;
+  attendance?: number;
+  attendees?: number;
+  type?: string;
+  status?: string;
+  start_time?: string;
 }
 
 interface EmergencyServices {
-  response_time: number;
-  active_calls: number;
-  availability: string;
-  fire_stations: number;
+  fire_department?: { active_calls: number; response_time: string };
+  police?: { active_incidents: number; response_time: string };
+  ambulance?: { active_calls: number; response_time: string };
+  response_time?: number;
+  active_calls?: number;
+  availability?: string;
+  fire_stations?: number;
 }
 
 interface UtilitiesData {
-  power_grid: string;
-  water_supply: string;
-  internet_speed: number;
-  mobile_coverage: string;
+  electricity?: { grid_load: number; outages: number };
+  water?: { pressure: number; quality: string };
+  internet?: { average_speed_mbps: number; uptime: number };
+  waste?: { collection_efficiency: number; recycling_rate: number };
+  power_grid?: string;
+  water_supply?: string;
+  internet_speed?: number;
+  mobile_coverage?: string;
 }
 
 interface EnvironmentalData {
-  air_quality: number;
-  noise_level: number;
-  green_space_percentage: number;
-  waste_recycling_rate: number;
+  air_quality?: { aqi: number; quality: string };
+  noise_levels?: { average_db: number; peak_db: number };
+  green_space_coverage?: number;
+  biodiversity_index?: string;
+  air_quality_number?: number;
+  noise_level?: number;
+  green_space_percentage?: number;
+  waste_recycling_rate?: number;
 }
 
 interface SocialMediaData {
-  trending_topics: string[];
-  check_ins: number;
-  sentiment: string;
-  activity_level: string;
+  trending_hashtags?: string[];
+  mentions_per_hour?: number;
+  sentiment_score?: string;
+  popular_locations?: string[];
+  trending_topics?: string[];
+  check_ins?: number;
+  sentiment?: string;
+  activity_level?: string;
 }
 
 interface EconomicActivity {
-  gdp_per_capita: number;
-  unemployment_rate: number;
-  business_registrations: number;
-  tourist_spending: number;
+  gdp_contribution?: string;
+  employment_rate?: string;
+  business_creation_rate?: number;
+  tourism_revenue_daily?: string;
+  gdp_per_capita?: number;
+  unemployment_rate?: number;
+  business_registrations?: number;
+  tourist_spending?: number;
 }
 
 interface LocationDetail {
@@ -589,7 +668,7 @@ const ComprehensiveLocationExplorer: React.FC = () => {
           <div className="text-xl font-bold text-white">{locationData?.education.primary_schools}</div>
         </div>
         <div className="bg-gray-900 p-4 rounded-lg">
-          <Hospital className="w-6 h-6 text-red-400 mb-2" />
+          <Heart className="w-6 h-6 text-red-400 mb-2" />
           <div className="text-sm text-gray-400">Hospitals</div>
           <div className="text-xl font-bold text-white">{locationData?.healthcare.hospitals}</div>
         </div>
@@ -599,7 +678,7 @@ const ComprehensiveLocationExplorer: React.FC = () => {
           <div className="text-xl font-bold text-white">{formatNumber(locationData?.commercial.restaurants || 0)}</div>
         </div>
         <div className="bg-gray-900 p-4 rounded-lg">
-          <Drama className="w-6 h-6 text-purple-400 mb-2" />
+          <Film className="w-6 h-6 text-purple-400 mb-2" />
           <div className="text-sm text-gray-400">Museums</div>
           <div className="text-xl font-bold text-white">{locationData?.entertainment.museums}</div>
         </div>
@@ -626,22 +705,22 @@ const ComprehensiveLocationExplorer: React.FC = () => {
             <div className="bg-black/50 p-4 rounded-lg">
               <Car className="w-5 h-5 text-red-400 mb-2" />
               <div className="text-sm text-gray-400">Traffic</div>
-              <div className="font-bold text-white">{liveData.traffic.overall_congestion}</div>
+              <div className="font-bold text-white">{liveData.traffic?.overall_congestion || liveData.traffic?.congestion_level || 'N/A'}</div>
             </div>
             <div className="bg-black/50 p-4 rounded-lg">
               <Building className="w-5 h-5 text-blue-400 mb-2" />
               <div className="text-sm text-gray-400">Business Activity</div>
-              <div className="font-bold text-white">{liveData.business_activity.activity_level}</div>
+              <div className="font-bold text-white">{liveData.business_activity?.activity_level || 'N/A'}</div>
             </div>
             <div className="bg-black/50 p-4 rounded-lg">
               <Leaf className="w-5 h-5 text-green-400 mb-2" />
               <div className="text-sm text-gray-400">Air Quality</div>
-              <div className="font-bold text-white">{liveData.environmental.air_quality.quality}</div>
+              <div className="font-bold text-white">{typeof liveData.environmental?.air_quality === 'object' ? liveData.environmental.air_quality.quality : (liveData.environmental?.air_quality_number || 'N/A')}</div>
             </div>
             <div className="bg-black/50 p-4 rounded-lg">
               <Zap className="w-5 h-5 text-yellow-400 mb-2" />
               <div className="text-sm text-gray-400">Grid Load</div>
-              <div className="font-bold text-white">{liveData.utilities.electricity.grid_load}%</div>
+              <div className="font-bold text-white">{typeof liveData.utilities?.electricity === 'object' ? liveData.utilities.electricity.grid_load : (liveData.utilities?.power_grid || 'N/A')}%</div>
             </div>
           </div>
         </div>
@@ -882,8 +961,8 @@ const ComprehensiveLocationExplorer: React.FC = () => {
               { id: 'districts', label: 'Districts', icon: Building },
               { id: 'neighborhoods', label: 'Neighborhoods', icon: Home },
               { id: 'transport', label: 'Transport', icon: Bus },
-              { id: 'services', label: 'Services', icon: Hospital },
-              { id: 'culture', label: 'Culture', icon: Drama },
+              { id: 'services', label: 'Services', icon: Heart },
+              { id: 'culture', label: 'Culture', icon: Film },
               { id: 'nature', label: 'Nature', icon: TreePine }
             ].map(({ id, label, icon: Icon }) => (
               <button
