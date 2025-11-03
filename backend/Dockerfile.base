@@ -15,13 +15,11 @@ RUN apk add --no-cache curl wget \
 # Copy package files
 COPY package*.json ./
 
-# Install ALL dependencies (dev + production)
+# Install ALL dependencies (dev + production) and set up directories
 # This layer will be cached and reused unless package.json changes
 RUN npm ci --legacy-peer-deps \
-    && npm cache clean --force
-
-# Create directories and set permissions
-RUN mkdir -p /app/dist /app/src \
+    && npm cache clean --force \
+    && mkdir -p /app/dist /app/src \
     && chown -R nodeuser:nodejs /app
 
 # Set user for security

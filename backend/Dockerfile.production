@@ -6,39 +6,33 @@
 
 FROM node:18-alpine
 
-# Install system dependencies
+# Install system dependencies, create non-root user, copy packages and build
 RUN apk add --no-cache \
     dumb-init \
     curl \
-    && rm -rf /var/cache/apk/*
+    && rm -rf /var/cache/apk/* \
+    && addgroup -g 1001 -S nodejs \
+    && adduser -S nodeuser -u 1001 -G nodejs
 
 # Create app directory
 WORKDIR /app
 
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodeuser -u 1001 -G nodejs
-
 # Copy package files
 COPY package*.json ./
 
-# Install all dependencies (including dev dependencies for build)
-RUN npm ci && \
-    npm cache clean --force
+# Install all dependencies and build
+RUN npm ci \
+    && npm cache clean --force
 
 # Copy application source
 COPY . .
 
-# Build TypeScript
-RUN npm run build
-
-# Remove source files and dev dependencies to reduce image size
-RUN rm -rf src/ tsconfig*.json && \
-    npm ci --only=production && \
-    npm cache clean --force
-
-# Create logs directory with proper permissions
-RUN mkdir -p /app/logs && \
+# Build TypeScript and prepare for production
+RUN npm run build \
+    && rm -rf src/ tsconfig*.json \
+    && npm ci --only=production \
+    && npm cache clean --force \
+    && mkdir -p /app/logs \
     chown -R nodeuser:nodejs /app
 
 # Switch to non-root user

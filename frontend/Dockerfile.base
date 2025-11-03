@@ -9,8 +9,8 @@ WORKDIR /app
 
 # Install system dependencies that rarely change
 RUN apk add --no-cache \
-    libc6-compat \
     curl \
+    libc6-compat \
     wget \
     && addgroup -g 1001 -S nodejs \
     && adduser -S nextjs -u 1001
@@ -21,10 +21,8 @@ COPY package*.json ./
 # Install ALL dependencies (dev + production)
 # This layer will be cached and reused unless package.json changes
 RUN npm install --legacy-peer-deps --no-audit --no-fund \
-    && npm cache clean --force
-
-# Create directories and set permissions
-RUN mkdir -p /app/dist /app/node_modules \
+    && npm cache clean --force \
+    && mkdir -p /app/dist /app/node_modules \
     && chown -R nextjs:nodejs /app
 
 # Set user for security

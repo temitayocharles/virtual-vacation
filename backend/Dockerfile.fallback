@@ -15,14 +15,10 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Build the application
-RUN npm run build
-
-# Remove node_modules to reduce size
-RUN rm -rf node_modules
-
-# Install only production dependencies
-RUN npm ci --only=production
+# Build the application and prepare for production
+RUN npm run build \
+    && rm -rf node_modules \
+    && npm ci --only=production
 
 # Production stage - Final image
 FROM node:18-alpine AS runtime
@@ -36,12 +32,10 @@ COPY --from=builder /app/package*.json ./
 # Copy healthcheck script
 COPY healthcheck.js ./
 
-# Create non-root user
+# Create non-root user and change ownership
 RUN addgroup -g 1001 -S nodejs \
-    && adduser -S nodeuser -u 1001
-
-# Change ownership of the app directory
-RUN chown -R nodeuser:nodejs /app
+    && adduser -S nodeuser -u 1001 \
+    && chown -R nodeuser:nodejs /app
 USER nodeuser
 
 # Expose port
